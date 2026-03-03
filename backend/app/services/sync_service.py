@@ -9,13 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.email import Email
 from app.models.email_account import EmailAccount
 from app.models.thread import Thread
-from app.services.nylas_service import nylas_service
+from app.services import nylas_service
 
 logger = logging.getLogger(__name__)
 
+# In-memory sync status per account (good enough for single-process MVP)
+_sync_status: dict[str, dict] = {}
+
+
+def get_sync_status(account_id: str) -> dict:
+    return _sync_status.get(account_id, {"status": "idle"})
+
 
 def _parse_nylas_thread(nylas_thread: dict, account_id) -> dict:
-    """Convert a Nylas thread object to our DB fields."""
     return {
         "account_id": account_id,
         "nylas_thread_id": nylas_thread["id"],
@@ -32,7 +38,6 @@ def _parse_nylas_thread(nylas_thread: dict, account_id) -> dict:
 
 
 def _parse_nylas_message(nylas_msg: dict, account_id, thread_id=None) -> dict:
-    """Convert a Nylas message object to our DB fields."""
     from_list = nylas_msg.get("from", [])
     return {
         "account_id": account_id,
@@ -42,8 +47,8 @@ def _parse_nylas_message(nylas_msg: dict, account_id, thread_id=None) -> dict:
         "subject": nylas_msg.get("subject"),
         "snippet": nylas_msg.get("snippet"),
         "body_html": nylas_msg.get("body"),
-        "from_name": from_list[0]["name"] if from_list else None,
-        "from_email": from_list[0]["email"] if from_list else None,
+        "from_name": from_list[0].get("name") if from_list else None,
+        "from_email": from_list[0].get("email") if from_list else None,
         "to_list": nylas_msg.get("to"),
         "cc_list": nylas_msg.get("cc"),
         "bcc_list": nylas_msg.get("bcc"),
@@ -63,7 +68,6 @@ def _unix_to_dt(ts: int | None) -> datetime | None:
 
 
 async def upsert_thread(db: AsyncSession, nylas_thread: dict, account_id) -> Thread:
-    """Insert or update a thread from Nylas data."""
     result = await db.execute(
         select(Thread).where(
             Thread.account_id == account_id,
@@ -86,7 +90,6 @@ async def upsert_thread(db: AsyncSession, nylas_thread: dict, account_id) -> Thr
 
 
 async def upsert_message(db: AsyncSession, nylas_msg: dict, account_id, thread_id=None) -> Email:
-    """Insert or update an email from Nylas data."""
     result = await db.execute(
         select(Email).where(
             Email.account_id == account_id,
@@ -108,41 +111,101 @@ async def upsert_message(db: AsyncSession, nylas_msg: dict, account_id, thread_i
     return email
 
 
-async def sync_account(db: AsyncSession, account: EmailAccount) -> int:
-    """Full sync: fetch threads + messages from Nylas and upsert to DB.
+async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -> int:
+    """Sync messages from Nylas for the last N days.
 
-    Returns the number of messages synced.
+    Fetches messages in bulk (not per-thread), then groups by thread.
     """
+    account_key = str(account.id)
     grant_id = account.nylas_grant_id
+
+    logger.info("sync_account called for %s (grant=%s, days=%d)", account.email_address, grant_id, days)
+    _sync_status[account_key] = {"status": "syncing", "messages": 0, "started_at": datetime.now(timezone.utc).isoformat()}
+
+    # Calculate cutoff timestamp
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    received_after = int(cutoff.timestamp())
+
     total_messages = 0
     page_token = None
 
-    # Paginate through threads
-    while True:
-        result = await nylas_service.list_threads(
-            grant_id, limit=25, page_token=page_token
-        )
-        threads_data = result["data"]
+    try:
+        # Fetch messages in bulk with date filter
+        while True:
+            result = await nylas_service.list_messages(
+                grant_id, limit=50, page_token=page_token, received_after=received_after
+            )
+            messages = result["data"]
+            logger.info("Fetched %d messages (page)", len(messages))
 
-        for nylas_thread in threads_data:
-            thread = await upsert_thread(db, nylas_thread, account.id)
+            for nylas_msg in messages:
+                # Upsert thread if we have a thread_id
+                thread_id_db = None
+                nylas_thread_id = nylas_msg.get("thread_id")
+                if nylas_thread_id:
+                    # Create a minimal thread record from the message
+                    thread_result = await db.execute(
+                        select(Thread).where(
+                            Thread.account_id == account.id,
+                            Thread.nylas_thread_id == nylas_thread_id,
+                        )
+                    )
+                    thread = thread_result.scalar_one_or_none()
+                    if not thread:
+                        thread = Thread(
+                            account_id=account.id,
+                            nylas_thread_id=nylas_thread_id,
+                            subject=nylas_msg.get("subject"),
+                            snippet=nylas_msg.get("snippet"),
+                            is_unread=nylas_msg.get("unread", False),
+                            is_starred=nylas_msg.get("starred", False),
+                            has_attachments=bool(nylas_msg.get("attachments")),
+                            participants=nylas_msg.get("from"),
+                            folder_ids=nylas_msg.get("folders"),
+                            last_message_at=_unix_to_dt(nylas_msg.get("date")),
+                            message_count=1,
+                        )
+                        db.add(thread)
+                        await db.flush()
+                    else:
+                        # Update thread timestamp if this message is newer
+                        msg_date = _unix_to_dt(nylas_msg.get("date"))
+                        if msg_date and (not thread.last_message_at or msg_date > thread.last_message_at):
+                            thread.last_message_at = msg_date
+                            thread.snippet = nylas_msg.get("snippet")
+                            thread.is_unread = thread.is_unread or nylas_msg.get("unread", False)
+                        await db.flush()
+                    thread_id_db = thread.id
 
-            # Fetch messages for this thread
-            for msg_id in nylas_thread.get("message_ids", []):
-                try:
-                    nylas_msg = await nylas_service.get_message(grant_id, msg_id)
-                    await upsert_message(db, nylas_msg, account.id, thread.id)
+                # Check if message already exists (for dedup)
+                existing_msg = await db.execute(
+                    select(Email.id).where(
+                        Email.account_id == account.id,
+                        Email.nylas_message_id == nylas_msg["id"],
+                    )
+                )
+                is_new = existing_msg.scalar_one_or_none() is None
+
+                await upsert_message(db, nylas_msg, account.id, thread_id_db)
+                if is_new:
                     total_messages += 1
-                except Exception:
-                    logger.warning("Failed to fetch message %s", msg_id, exc_info=True)
 
-        page_token = result.get("next_cursor")
-        if not page_token or not threads_data:
-            break
+            _sync_status[account_key] = {"status": "syncing", "messages": total_messages}
 
-    # Update last_sync_at
-    account.last_sync_at = datetime.now(timezone.utc)
-    await db.commit()
+            page_token = result.get("next_cursor")
+            if not page_token or not messages:
+                break
 
-    logger.info("Synced %d messages for account %s", total_messages, account.email_address)
+        account.last_sync_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        _sync_status[account_key] = {"status": "done", "messages": total_messages}
+        logger.info("Synced %d messages for %s", total_messages, account.email_address)
+
+    except Exception as e:
+        _sync_status[account_key] = {"status": "error", "error": str(e)}
+        logger.error("Sync failed for %s: %s", account.email_address, e, exc_info=True)
+        raise
+
     return total_messages

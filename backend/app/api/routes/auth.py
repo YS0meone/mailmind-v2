@@ -14,7 +14,7 @@ from app.schemas.auth import (
     NylasCallbackRequest,
     UserResponse,
 )
-from app.services.nylas_service import nylas_service
+from app.services import nylas_service
 from app.services.session import create_session_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])

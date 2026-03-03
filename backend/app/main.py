@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,6 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, emails, sync, threads
 from app.config import settings
+
+# Configure logging — all app loggers print to stdout
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 @asynccontextmanager

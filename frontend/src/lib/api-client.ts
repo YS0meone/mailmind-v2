@@ -110,3 +110,7 @@ export async function sendEmail(payload: {
 export async function triggerSync() {
   return backendFetch("/api/v1/sync/trigger", { method: "POST" });
 }
+
+export async function getSyncStatus() {
+  return backendFetch("/api/v1/sync/status");
+}

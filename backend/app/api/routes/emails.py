@@ -10,7 +10,7 @@ from app.models.email import Email
 from app.models.email_account import EmailAccount
 from app.models.user import User
 from app.schemas.email import EmailResponse, EmailUpdateRequest, SendEmailRequest
-from app.services.nylas_service import nylas_service
+from app.services import nylas_service
 
 router = APIRouter(prefix="/emails", tags=["emails"])
 

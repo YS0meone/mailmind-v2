@@ -17,6 +17,7 @@ dependencies = [
     "nylas>=6.1.0",
     "cryptography>=43.0.0",
     "pyjwt>=2.11.0",
+    "fastapi-cli>=0.0.24",
 ]
 
 [project.optional-dependencies]

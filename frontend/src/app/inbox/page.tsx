@@ -9,6 +9,7 @@ import {
   updateEmail,
   sendEmail,
   triggerSync,
+  getSyncStatus,
   getMe,
 } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -177,10 +178,24 @@ export default function InboxPage() {
     setSyncing(true);
     try {
       await triggerSync();
+      // Poll until sync is done
+      const poll = async () => {
+        for (let i = 0; i < 60; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const status = await getSyncStatus();
+          const accounts = status?.accounts || [];
+          const allDone = accounts.every(
+            (a: { status: string }) =>
+              a.status === "done" || a.status === "error" || a.status === "idle"
+          );
+          if (allDone) break;
+        }
+      };
+      await poll();
       const data = await listThreads();
       setThreads(data);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Sync failed:", err);
     } finally {
       setSyncing(false);
     }
@@ -386,7 +401,8 @@ export default function InboxPage() {
                           {thread.snippet}
                         </p>
                       </div>
-                      <button
+                      <div
+                        role="button"
                         onClick={(e) => handleStar(e, thread)}
                         className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 data-[starred=true]:opacity-100"
                         data-starred={thread.is_starred}
@@ -399,7 +415,7 @@ export default function InboxPage() {
                               : "text-muted-foreground/50 hover:text-amber-400"
                           )}
                         />
-                      </button>
+                      </div>
                     </div>
                     {thread.message_count > 1 && (
                       <Badge

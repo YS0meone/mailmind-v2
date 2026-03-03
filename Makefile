@@ -22,7 +22,7 @@ down: ## Stop PostgreSQL + Qdrant
 # ── Dev servers ────────────────────────────────────────
 
 backend: ## Start FastAPI dev server (port 8000)
-	cd backend && uv run uvicorn app.main:app --reload
+	cd backend && uv run fastapi dev app/main.py
 
 frontend: ## Start Next.js dev server (port 3000)
 	cd frontend && pnpm dev
