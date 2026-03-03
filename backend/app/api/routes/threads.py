@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,6 +13,9 @@ from app.models.email_account import EmailAccount
 from app.models.thread import Thread
 from app.models.user import User
 from app.schemas.email import ThreadDetailResponse, ThreadResponse
+from app.services import nylas_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/threads", tags=["threads"])
 
@@ -89,3 +93,41 @@ async def get_thread(
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
     return thread
+
+
+@router.patch("/{thread_id}/read")
+async def mark_thread_read(
+    thread_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a thread and all its emails as read. Syncs to Nylas."""
+    account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
+    result = await db.execute(
+        select(Thread)
+        .options(selectinload(Thread.emails))
+        .where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
+    )
+    thread = result.scalar_one_or_none()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    # Get grant_id for Nylas sync
+    account = await db.get(EmailAccount, thread.account_id)
+    grant_id = account.nylas_grant_id if account else None
+
+    # Mark all unread emails as read
+    for email in thread.emails:
+        if email.is_unread:
+            email.is_unread = False
+            if grant_id:
+                try:
+                    await nylas_service.update_message(
+                        grant_id, email.nylas_message_id, {"unread": False}
+                    )
+                except Exception as e:
+                    logger.warning("Failed to sync read status to Nylas for %s: %s", email.id, e)
+
+    thread.is_unread = False
+    await db.commit()
+    return {"status": "ok"}

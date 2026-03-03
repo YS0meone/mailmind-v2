@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,10 +9,12 @@ from app.api.deps import get_current_user
 from app.db.database import get_db
 from app.models.email import Email
 from app.models.email_account import EmailAccount
+from app.models.thread import Thread
 from app.models.user import User
 from app.schemas.email import EmailResponse, EmailUpdateRequest, SendEmailRequest
 from app.services import nylas_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/emails", tags=["emails"])
 
 
@@ -66,8 +69,24 @@ async def update_email(
             await nylas_service.update_message(
                 account.nylas_grant_id, email.nylas_message_id, nylas_updates
             )
-        except Exception:
-            pass  # Best-effort sync to Nylas
+        except Exception as e:
+            logger.warning("Failed to sync email %s to Nylas: %s", email_id, e)
+
+    # Update parent thread's is_unread based on remaining unread emails
+    if body.is_unread is not None and email.thread_id:
+        # Flush so this email's new is_unread is visible to the query
+        await db.flush()
+        remaining_unread = await db.execute(
+            select(Email.id)
+            .where(
+                Email.thread_id == email.thread_id,
+                Email.is_unread == True,  # noqa: E712
+            )
+            .limit(1)
+        )
+        thread = await db.get(Thread, email.thread_id)
+        if thread:
+            thread.is_unread = remaining_unread.first() is not None
 
     await db.commit()
     await db.refresh(email)

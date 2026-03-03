@@ -26,6 +26,7 @@ export default function InboxPage() {
     setActiveFolder,
     handleSelectThread,
     handleStar,
+    handleRefresh,
     handleSignOut,
     handleCloseDetail,
   } = useInbox();
@@ -71,6 +72,7 @@ export default function InboxPage() {
             activeFolder={activeFolder}
             onSelect={onSelectThread}
             onStar={handleStar}
+            onRefresh={handleRefresh}
           />
         </ResizablePanel>
 

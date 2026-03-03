@@ -86,6 +86,10 @@ export async function getThread(threadId: string) {
   return backendFetch(`/api/v1/threads/${threadId}`);
 }
 
+export async function markThreadRead(threadId: string) {
+  return backendFetch(`/api/v1/threads/${threadId}/read`, { method: "PATCH" });
+}
+
 export async function updateEmail(
   emailId: string,
   updates: { is_unread?: boolean; is_starred?: boolean }

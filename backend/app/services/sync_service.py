@@ -174,7 +174,10 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                         if msg_date and (not thread.last_message_at or msg_date > thread.last_message_at):
                             thread.last_message_at = msg_date
                             thread.snippet = nylas_msg.get("snippet")
-                            thread.is_unread = thread.is_unread or nylas_msg.get("unread", False)
+                        # Sync unread from Nylas — if Nylas says unread, mark thread unread;
+                        # otherwise keep current state (may have been read locally)
+                        if nylas_msg.get("unread", False):
+                            thread.is_unread = True
                         await db.flush()
                     thread_id_db = thread.id
 

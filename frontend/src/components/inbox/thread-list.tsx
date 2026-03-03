@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox } from "lucide-react";
+import { Inbox, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ThreadListItem } from "./thread-list-item";
 import type { Thread } from "@/types/email";
 
@@ -15,6 +16,7 @@ interface ThreadListProps {
   activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+  onRefresh: () => void;
 }
 
 const FOLDER_LABELS: Record<string, string> = {
@@ -32,6 +34,7 @@ export function ThreadList({
   activeFolder,
   onSelect,
   onStar,
+  onRefresh,
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
 
@@ -43,6 +46,15 @@ export function ThreadList({
       {/* Header */}
       <div className="flex h-13 shrink-0 items-center justify-between border-b px-4">
         <h2 className="text-sm font-semibold">{FOLDER_LABELS[activeFolder] || "Inbox"}</h2>
+        <div className="flex items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={onRefresh}
+        >
+          <RefreshCw className="size-3.5" />
+        </Button>
         <Tabs
           value={filter}
           onValueChange={setFilter}
@@ -57,6 +69,7 @@ export function ThreadList({
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        </div>
       </div>
 
       {/* Thread list */}

@@ -6,12 +6,12 @@ import { isAuthenticated, clearToken } from "@/lib/auth";
 import {
   listThreads,
   getThread,
-  updateEmail,
+  markThreadRead,
   triggerSync,
   getSyncStatus,
   getMe,
 } from "@/lib/api-client";
-import type { Thread, ThreadDetail, EmailMessage } from "@/types/email";
+import type { Thread, ThreadDetail } from "@/types/email";
 
 export function useInbox() {
   const router = useRouter();
@@ -104,12 +104,8 @@ export function useInbox() {
             t.id === thread.id ? { ...t, is_unread: false } : t
           )
         );
-        const unreadEmails = detail.emails?.filter(
-          (e: EmailMessage) => e.is_unread
-        );
-        for (const email of unreadEmails || []) {
-          updateEmail(email.id, { is_unread: false }).catch(() => {});
-        }
+        // Mark thread + all its emails as read in one call
+        markThreadRead(thread.id).catch(() => {});
       }
     } catch {
       setSelectedThread(null);
@@ -154,6 +150,12 @@ export function useInbox() {
     );
   };
 
+  const handleRefresh = useCallback(() => {
+    listThreads(undefined, activeFolder)
+      .then((data) => setThreads(data))
+      .catch(() => {});
+  }, [activeFolder]);
+
   const handleSignOut = () => {
     clearToken();
     router.replace("/login");
@@ -175,6 +177,7 @@ export function useInbox() {
     setActiveFolder,
     handleSelectThread,
     handleStar,
+    handleRefresh,
     handleSignOut,
     handleCloseDetail,
   };
