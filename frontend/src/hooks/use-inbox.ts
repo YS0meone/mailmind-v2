@@ -37,6 +37,48 @@ export function useInbox() {
     ])
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Background catch-up sync on page load (covers any missed webhooks)
+    let cancelled = false;
+    (async () => {
+      try {
+        await triggerSync();
+        console.log("[sync] catch-up sync triggered on load");
+        for (let i = 0; i < 30; i++) {
+          if (cancelled) return;
+          await new Promise((r) => setTimeout(r, 2000));
+          const status = await getSyncStatus();
+          const accounts = status?.accounts || [];
+          const allDone = accounts.every(
+            (a: { status: string }) =>
+              a.status === "done" || a.status === "error" || a.status === "idle"
+          );
+          if (allDone) break;
+        }
+        if (!cancelled) {
+          const data = await listThreads();
+          console.log(`[sync] catch-up done, got ${data.length} threads`);
+          setThreads(data);
+        }
+      } catch {
+        // catch-up sync is best-effort
+      }
+    })();
+
+    // Poll for new emails every 30 seconds
+    const interval = setInterval(() => {
+      console.log("[poll] fetching threads...");
+      listThreads()
+        .then((data) => {
+          console.log(`[poll] got ${data.length} threads`);
+          setThreads(data);
+        })
+        .catch((err) => console.error("[poll] failed:", err));
+    }, 30_000);
+    return () => {
+      clearInterval(interval);
+      cancelled = true;
+    };
   }, [router]);
 
   const handleSelectThread = useCallback(async (thread: Thread) => {

@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     nylas_api_key: str = ""
     nylas_api_uri: str = "https://api.us.nylas.com"
 
+    nylas_webhook_secret: str = ""
+
     # Session
     session_secret: str = "change-me-in-production"
 
