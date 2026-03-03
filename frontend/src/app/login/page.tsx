@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated, getNylasAuthUrl } from "@/lib/auth";
+import { MailmindIcon } from "@/components/mailmind-icon";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +17,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
-        <div className="text-center">
+        <div className="flex flex-col items-center text-center">
+          <MailmindIcon className="size-12 mb-2" />
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
             mailmind
           </h1>

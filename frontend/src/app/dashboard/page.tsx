@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 import { listAccounts, getMe } from "@/lib/api-client";
+import { MailmindIcon } from "@/components/mailmind-icon";
 
 interface EmailAccount {
   id: string;
@@ -51,9 +52,12 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            mailmind
-          </h1>
+          <div className="flex items-center gap-2">
+            <MailmindIcon className="size-6" />
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              mailmind
+            </h1>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {email}

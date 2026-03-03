@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Mail,
   Inbox,
   Send,
   Star,
@@ -29,6 +28,7 @@ import {
   Search,
   User,
 } from "lucide-react";
+import { MailmindIcon } from "@/components/mailmind-icon";
 
 interface SidebarProps {
   userEmail: string;
@@ -68,7 +68,7 @@ export function Sidebar({
       <div className="flex h-13 shrink-0 items-center justify-between border-b px-3">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <Mail className="size-4 text-primary" />
+            <MailmindIcon className="size-5" />
             <span className="text-sm font-semibold tracking-tight">
               mailmind
             </span>
