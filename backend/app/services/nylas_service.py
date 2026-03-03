@@ -44,13 +44,86 @@ class NylasService:
                 "email": data.get("email", ""),
             }
 
-    async def list_messages(self, grant_id: str, limit: int = 10) -> list[dict]:
-        """Fetch recent messages for a grant (for verification)."""
+    async def list_messages(
+        self, grant_id: str, limit: int = 50, page_token: str | None = None,
+        received_after: int | None = None,
+    ) -> dict:
+        """Fetch messages for a grant. Returns {data, next_cursor}."""
+        params: dict = {"limit": limit}
+        if page_token:
+            params["page_token"] = page_token
+        if received_after:
+            params["received_after"] = received_after
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.api_uri}/v3/grants/{grant_id}/messages",
                 headers=self._headers(),
-                params={"limit": limit},
+                params=params,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {"data": data["data"], "next_cursor": data.get("next_cursor")}
+
+    async def get_message(self, grant_id: str, message_id: str) -> dict:
+        """Fetch a single message by ID."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_uri}/v3/grants/{grant_id}/messages/{message_id}",
+                headers=self._headers(),
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            return response.json()["data"]
+
+    async def update_message(self, grant_id: str, message_id: str, updates: dict) -> dict:
+        """Update message fields (unread, starred, folders)."""
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{self.api_uri}/v3/grants/{grant_id}/messages/{message_id}",
+                headers=self._headers(),
+                json=updates,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            return response.json()["data"]
+
+    async def list_threads(
+        self, grant_id: str, limit: int = 25, page_token: str | None = None,
+    ) -> dict:
+        """Fetch threads for a grant. Returns {data, next_cursor}."""
+        params: dict = {"limit": limit}
+        if page_token:
+            params["page_token"] = page_token
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_uri}/v3/grants/{grant_id}/threads",
+                headers=self._headers(),
+                params=params,
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {"data": data["data"], "next_cursor": data.get("next_cursor")}
+
+    async def get_thread(self, grant_id: str, thread_id: str) -> dict:
+        """Fetch a single thread by ID."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_uri}/v3/grants/{grant_id}/threads/{thread_id}",
+                headers=self._headers(),
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            return response.json()["data"]
+
+    async def send_message(self, grant_id: str, message: dict) -> dict:
+        """Send a message. message should have: to, subject, body, optionally reply_to_message_id."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_uri}/v3/grants/{grant_id}/messages/send",
+                headers=self._headers(),
+                json=message,
                 timeout=30.0,
             )
             response.raise_for_status()
