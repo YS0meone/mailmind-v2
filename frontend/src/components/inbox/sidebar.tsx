@@ -22,7 +22,6 @@ import {
   Star,
   Trash2,
   FileText,
-  RefreshCw,
   PenSquare,
   PanelLeftClose,
   PanelLeftOpen,
@@ -34,10 +33,9 @@ import {
 interface SidebarProps {
   userEmail: string;
   activeFolder: string;
-  syncing: boolean;
-  onSync: () => void;
   onSignOut: () => void;
   onCompose: () => void;
+  onFolderChange: (folder: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -53,10 +51,9 @@ const folders = [
 export function Sidebar({
   userEmail,
   activeFolder,
-  syncing,
-  onSync,
   onSignOut,
   onCompose,
+  onFolderChange,
   collapsed,
   onToggleCollapse,
 }: SidebarProps) {
@@ -142,6 +139,7 @@ export function Sidebar({
               <Tooltip key={folder.id}>
                 <TooltipTrigger asChild>
                   <button
+                    onClick={() => onFolderChange(folder.id)}
                     className={cn(
                       "flex items-center justify-center rounded-md p-2 transition-colors",
                       "hover:bg-accent",
@@ -159,6 +157,7 @@ export function Sidebar({
           return (
             <button
               key={folder.id}
+              onClick={() => onFolderChange(folder.id)}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
                 "hover:bg-accent",
@@ -174,38 +173,8 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Sync + Profile */}
+      {/* Profile */}
       <div className="flex flex-col gap-1 border-t p-2">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-full"
-                onClick={onSync}
-                disabled={syncing}
-              >
-                <RefreshCw
-                  className={cn("size-4", syncing && "animate-spin")}
-                />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Sync</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-xs"
-            onClick={onSync}
-            disabled={syncing}
-          >
-            <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
-            {syncing ? "Syncing..." : "Sync"}
-          </Button>
-        )}
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {collapsed ? (

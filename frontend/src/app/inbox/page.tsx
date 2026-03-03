@@ -22,10 +22,9 @@ export default function InboxPage() {
     selectedId,
     loading,
     detailLoading,
-    syncing,
     activeFolder,
+    setActiveFolder,
     handleSelectThread,
-    handleSync,
     handleStar,
     handleSignOut,
     handleCloseDetail,
@@ -56,10 +55,9 @@ export default function InboxPage() {
       <Sidebar
         userEmail={userEmail}
         activeFolder={activeFolder}
-        syncing={syncing}
-        onSync={handleSync}
         onSignOut={handleSignOut}
         onCompose={() => setComposeOpen(true)}
+        onFolderChange={setActiveFolder}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((p) => !p)}
       />
@@ -70,9 +68,9 @@ export default function InboxPage() {
             threads={threads}
             loading={loading}
             selectedId={selectedId}
+            activeFolder={activeFolder}
             onSelect={onSelectThread}
             onStar={handleStar}
-            onSync={handleSync}
           />
         </ResizablePanel>
 

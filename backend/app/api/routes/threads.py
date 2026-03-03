@@ -16,10 +16,19 @@ from app.schemas.email import ThreadDetailResponse, ThreadResponse
 router = APIRouter(prefix="/threads", tags=["threads"])
 
 
+FOLDER_LABEL_MAP = {
+    "inbox": "INBOX",
+    "sent": "SENT",
+    "drafts": "DRAFT",
+    "trash": "TRASH",
+}
+
+
 @router.get("/", response_model=list[ThreadResponse])
 async def list_threads(
     limit: int = Query(25, le=50),
     cursor: str | None = None,
+    folder: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -33,6 +42,24 @@ async def list_threads(
         .order_by(Thread.last_message_at.desc())
         .limit(limit)
     )
+
+    if folder == "starred":
+        query = query.where(Thread.is_starred == True)  # noqa: E712
+    elif folder == "sent":
+        # Gmail doesn't put SENT in folder_ids via Nylas; match by from_email
+        account_emails = select(EmailAccount.email_address).where(
+            EmailAccount.user_id == user.id
+        )
+        sent_thread_ids = (
+            select(Email.thread_id)
+            .where(Email.from_email.in_(account_emails))
+            .distinct()
+        )
+        query = query.where(Thread.id.in_(sent_thread_ids))
+    elif folder and folder in FOLDER_LABEL_MAP:
+        label = FOLDER_LABEL_MAP[folder]
+        query = query.where(Thread.folder_ids.contains([label]))
+
     if cursor:
         # cursor is a thread ID — skip past it
         cursor_thread = await db.get(Thread, uuid.UUID(cursor))

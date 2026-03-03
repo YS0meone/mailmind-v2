@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 import {
@@ -25,18 +25,16 @@ export function useInbox() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
+  const activeFolderRef = useRef(activeFolder);
+  activeFolderRef.current = activeFolder;
 
+  // Fetch user on mount + kick off catch-up sync
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace("/login");
       return;
     }
-    Promise.all([
-      getMe().then((u) => setUserEmail(u.email)),
-      listThreads().then((data) => setThreads(data)),
-    ])
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    getMe().then((u) => setUserEmail(u.email)).catch(() => {});
 
     // Background catch-up sync on page load (covers any missed webhooks)
     let cancelled = false;
@@ -56,7 +54,7 @@ export function useInbox() {
           if (allDone) break;
         }
         if (!cancelled) {
-          const data = await listThreads();
+          const data = await listThreads(undefined, activeFolderRef.current);
           console.log(`[sync] catch-up done, got ${data.length} threads`);
           setThreads(data);
         }
@@ -65,21 +63,34 @@ export function useInbox() {
       }
     })();
 
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  // Fetch threads when activeFolder changes + set up polling
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+
+    setLoading(true);
+    listThreads(undefined, activeFolder)
+      .then((data) => setThreads(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
     // Poll for new emails every 30 seconds
     const interval = setInterval(() => {
-      console.log("[poll] fetching threads...");
-      listThreads()
+      console.log(`[poll] fetching threads (folder=${activeFolder})...`);
+      listThreads(undefined, activeFolder)
         .then((data) => {
           console.log(`[poll] got ${data.length} threads`);
           setThreads(data);
         })
         .catch((err) => console.error("[poll] failed:", err));
     }, 30_000);
-    return () => {
-      clearInterval(interval);
-      cancelled = true;
-    };
-  }, [router]);
+
+    return () => clearInterval(interval);
+  }, [activeFolder]);
 
   const handleSelectThread = useCallback(async (thread: Thread) => {
     setSelectedId(thread.id);
@@ -124,7 +135,7 @@ export function useInbox() {
         }
       };
       await poll();
-      const data = await listThreads();
+      const data = await listThreads(undefined, activeFolder);
       setThreads(data);
     } catch (err) {
       console.error("Sync failed:", err);
@@ -160,11 +171,9 @@ export function useInbox() {
     selectedId,
     loading,
     detailLoading,
-    syncing,
     activeFolder,
     setActiveFolder,
     handleSelectThread,
-    handleSync,
     handleStar,
     handleSignOut,
     handleCloseDetail,

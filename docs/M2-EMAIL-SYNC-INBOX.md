@@ -250,3 +250,13 @@ The polling loop iterates active accounts every 5 minutes, calling the sync serv
 - Star/unstar a message → reflected in Gmail
 - Send a reply → appears in Gmail sent folder
 - New email arrives in Gmail → appears in inbox via poll (or webhook if configured)
+
+
+  M2 — Likely remaining items
+
+  1. Folder filtering — activeFolder state exists but doesn't filter threads yet (inbox/sent/drafts/starred)
+  2. Search — no email search endpoint or UI
+  3. Mark as read/unread — updateEmail exists but doesn't sync back to Nylas (only updates local DB)
+  4. Star/unstar — handleStar updates UI state only, doesn't persist to DB or Nylas
+  5. Pagination — listThreads currently returns all threads, no cursor/offset
+  6. Send/reply — no compose or reply functionality yet (likely M2 or M3)

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox, RefreshCw } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { ThreadListItem } from "./thread-list-item";
 import type { Thread } from "@/types/email";
 
@@ -13,18 +12,26 @@ interface ThreadListProps {
   threads: Thread[];
   loading: boolean;
   selectedId: string | null;
+  activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
-  onSync: () => void;
 }
+
+const FOLDER_LABELS: Record<string, string> = {
+  inbox: "Inbox",
+  sent: "Sent",
+  starred: "Starred",
+  drafts: "Drafts",
+  trash: "Trash",
+};
 
 export function ThreadList({
   threads,
   loading,
   selectedId,
+  activeFolder,
   onSelect,
   onStar,
-  onSync,
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
 
@@ -35,7 +42,7 @@ export function ThreadList({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex h-13 shrink-0 items-center justify-between border-b px-4">
-        <h2 className="text-sm font-semibold">Inbox</h2>
+        <h2 className="text-sm font-semibold">{FOLDER_LABELS[activeFolder] || "Inbox"}</h2>
         <Tabs
           value={filter}
           onValueChange={setFilter}
@@ -70,17 +77,6 @@ export function ThreadList({
             <p className="text-sm">
               {filter === "unread" ? "No unread emails" : "No emails yet"}
             </p>
-            {filter === "all" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSync}
-                className="gap-1.5 text-xs"
-              >
-                <RefreshCw className="size-3" />
-                Sync now
-              </Button>
-            )}
           </div>
         ) : (
           <div className="flex flex-col gap-px p-1">
