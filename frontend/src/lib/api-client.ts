@@ -71,3 +71,42 @@ export async function disconnectAccount(accountId: string) {
 export async function getMe() {
   return backendFetch("/api/v1/auth/me");
 }
+
+// --- Threads & Emails ---
+
+export async function listThreads(cursor?: string) {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return backendFetch(`/api/v1/threads/${qs ? `?${qs}` : ""}`);
+}
+
+export async function getThread(threadId: string) {
+  return backendFetch(`/api/v1/threads/${threadId}`);
+}
+
+export async function updateEmail(
+  emailId: string,
+  updates: { is_unread?: boolean; is_starred?: boolean }
+) {
+  return backendFetch(`/api/v1/emails/${emailId}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function sendEmail(payload: {
+  to: { name?: string; email: string }[];
+  subject: string;
+  body: string;
+  reply_to_message_id?: string;
+}) {
+  return backendFetch("/api/v1/emails/send", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function triggerSync() {
+  return backendFetch("/api/v1/sync/trigger", { method: "POST" });
+}

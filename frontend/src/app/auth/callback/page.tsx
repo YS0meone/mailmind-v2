@@ -22,7 +22,7 @@ function CallbackContent() {
     exchangeNylasCode(code, redirectUri)
       .then((data) => {
         setToken(data.token);
-        router.replace("/dashboard");
+        router.replace("/inbox");
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to sign in");
