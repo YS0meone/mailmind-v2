@@ -4,19 +4,23 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox, RefreshCw } from "lucide-react";
+import { Inbox, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { ThreadListItem } from "./thread-list-item";
 import type { Thread } from "@/types/email";
 
 interface ThreadListProps {
   threads: Thread[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   selectedId: string | null;
   activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
   onRefresh: () => void;
+  onLoadMore: () => void;
 }
 
 const FOLDER_LABELS: Record<string, string> = {
@@ -30,11 +34,14 @@ const FOLDER_LABELS: Record<string, string> = {
 export function ThreadList({
   threads,
   loading,
+  loadingMore,
+  hasMore,
   selectedId,
   activeFolder,
   onSelect,
   onStar,
   onRefresh,
+  onLoadMore,
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
 
@@ -93,15 +100,27 @@ export function ThreadList({
           </div>
         ) : (
           <div className="flex flex-col gap-px p-1">
-            {filtered.map((thread) => (
-              <ThreadListItem
-                key={thread.id}
-                thread={thread}
-                isSelected={selectedId === thread.id}
-                onSelect={onSelect}
-                onStar={onStar}
-              />
-            ))}
+            <InfiniteScroll
+              hasMore={filter === "all" && hasMore}
+              isLoading={loadingMore}
+              next={onLoadMore}
+              rootMargin="200px"
+            >
+              {filtered.map((thread) => (
+                <ThreadListItem
+                  key={thread.id}
+                  thread={thread}
+                  isSelected={selectedId === thread.id}
+                  onSelect={onSelect}
+                  onStar={onStar}
+                />
+              ))}
+            </InfiniteScroll>
+            {loadingMore && (
+              <div className="flex justify-center py-3">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>

@@ -13,6 +13,8 @@ import {
 } from "@/lib/api-client";
 import type { Thread, ThreadDetail } from "@/types/email";
 
+const PAGE_SIZE = 25;
+
 export function useInbox() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
@@ -22,8 +24,9 @@ export function useInbox() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
   const activeFolderRef = useRef(activeFolder);
   activeFolderRef.current = activeFolder;
@@ -57,6 +60,7 @@ export function useInbox() {
           const data = await listThreads(undefined, activeFolderRef.current);
           console.log(`[sync] catch-up done, got ${data.length} threads`);
           setThreads(data);
+          setHasMore(data.length >= PAGE_SIZE);
         }
       } catch {
         // catch-up sync is best-effort
@@ -73,24 +77,49 @@ export function useInbox() {
     if (!isAuthenticated()) return;
 
     setLoading(true);
+    setHasMore(true);
     listThreads(undefined, activeFolder)
-      .then((data) => setThreads(data))
+      .then((data) => {
+        setThreads(data);
+        setHasMore(data.length >= PAGE_SIZE);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Poll for new emails every 30 seconds
+    // Poll for new emails every 30 seconds (first page only)
     const interval = setInterval(() => {
-      console.log(`[poll] fetching threads (folder=${activeFolder})...`);
       listThreads(undefined, activeFolder)
         .then((data) => {
-          console.log(`[poll] got ${data.length} threads`);
-          setThreads(data);
+          setThreads((prev) => {
+            // Merge: keep any extra pages loaded, but update first page
+            const newIds = new Set(data.map((t: Thread) => t.id));
+            const extraThreads = prev.filter(
+              (t) => !newIds.has(t.id) && !data.some((d: Thread) => d.last_message_at && t.last_message_at && d.last_message_at > t.last_message_at)
+            );
+            return [...data, ...extraThreads];
+          });
         })
-        .catch((err) => console.error("[poll] failed:", err));
+        .catch(() => {});
     }, 30_000);
 
     return () => clearInterval(interval);
   }, [activeFolder]);
+
+  // Load more threads (infinite scroll)
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    const lastThread = threads[threads.length - 1];
+    if (!lastThread) return;
+
+    setLoadingMore(true);
+    listThreads(lastThread.id, activeFolder)
+      .then((data) => {
+        setThreads((prev) => [...prev, ...data]);
+        setHasMore(data.length >= PAGE_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  }, [loadingMore, hasMore, threads, activeFolder]);
 
   const handleSelectThread = useCallback(async (thread: Thread) => {
     setSelectedId(thread.id);
@@ -114,32 +143,6 @@ export function useInbox() {
     }
   }, []);
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      await triggerSync();
-      const poll = async () => {
-        for (let i = 0; i < 60; i++) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const status = await getSyncStatus();
-          const accounts = status?.accounts || [];
-          const allDone = accounts.every(
-            (a: { status: string }) =>
-              a.status === "done" || a.status === "error" || a.status === "idle"
-          );
-          if (allDone) break;
-        }
-      };
-      await poll();
-      const data = await listThreads(undefined, activeFolder);
-      setThreads(data);
-    } catch (err) {
-      console.error("Sync failed:", err);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const handleStar = async (e: React.MouseEvent, thread: Thread) => {
     e.stopPropagation();
     const newStarred = !thread.is_starred;
@@ -151,8 +154,12 @@ export function useInbox() {
   };
 
   const handleRefresh = useCallback(() => {
+    setHasMore(true);
     listThreads(undefined, activeFolder)
-      .then((data) => setThreads(data))
+      .then((data) => {
+        setThreads(data);
+        setHasMore(data.length >= PAGE_SIZE);
+      })
       .catch(() => {});
   }, [activeFolder]);
 
@@ -172,12 +179,15 @@ export function useInbox() {
     selectedThread,
     selectedId,
     loading,
+    loadingMore,
+    hasMore,
     detailLoading,
     activeFolder,
     setActiveFolder,
     handleSelectThread,
     handleStar,
     handleRefresh,
+    handleLoadMore,
     handleSignOut,
     handleCloseDetail,
   };

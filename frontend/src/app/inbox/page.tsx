@@ -21,12 +21,15 @@ export default function InboxPage() {
     selectedThread,
     selectedId,
     loading,
+    loadingMore,
+    hasMore,
     detailLoading,
     activeFolder,
     setActiveFolder,
     handleSelectThread,
     handleStar,
     handleRefresh,
+    handleLoadMore,
     handleSignOut,
     handleCloseDetail,
   } = useInbox();
@@ -68,11 +71,14 @@ export default function InboxPage() {
           <ThreadList
             threads={threads}
             loading={loading}
+            loadingMore={loadingMore}
+            hasMore={hasMore}
             selectedId={selectedId}
             activeFolder={activeFolder}
             onSelect={onSelectThread}
             onStar={handleStar}
             onRefresh={handleRefresh}
+            onLoadMore={handleLoadMore}
           />
         </ResizablePanel>
 
