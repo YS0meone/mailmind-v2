@@ -4,7 +4,13 @@ import { useRef, useState, useCallback } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useInbox } from "@/hooks/use-inbox";
 import { useLabels } from "@/hooks/use-labels";
-import { getDraft, setThreadLabels } from "@/lib/api-client";
+import {
+  getDraft,
+  setThreadLabels,
+  toggleThreadStar,
+  toggleThreadRead,
+  deleteThread,
+} from "@/lib/api-client";
 import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
@@ -74,6 +80,54 @@ export default function InboxPage() {
       }
     },
     []
+  );
+
+  const handleBulkStar = useCallback(
+    async (threadIds: string[], starred: boolean) => {
+      setThreads((prev: Thread[]) =>
+        prev.map((t: Thread) =>
+          threadIds.includes(t.id) ? { ...t, is_starred: starred } : t
+        )
+      );
+      await Promise.allSettled(
+        threadIds.map((id) => toggleThreadStar(id, starred))
+      );
+    },
+    []
+  );
+
+  const handleBulkRead = useCallback(
+    async (threadIds: string[], unread: boolean) => {
+      setThreads((prev: Thread[]) =>
+        prev.map((t: Thread) =>
+          threadIds.includes(t.id) ? { ...t, is_unread: unread } : t
+        )
+      );
+      await Promise.allSettled(
+        threadIds.map((id) => toggleThreadRead(id, unread))
+      );
+    },
+    []
+  );
+
+  const handleBulkDelete = useCallback(
+    async (threadIds: string[]) => {
+      setThreads((prev: Thread[]) =>
+        prev.filter((t: Thread) => !threadIds.includes(t.id))
+      );
+      await Promise.allSettled(threadIds.map((id) => deleteThread(id)));
+    },
+    []
+  );
+
+  const handleBulkLabel = useCallback(
+    async (threadIds: string[], labelIds: string[]) => {
+      await Promise.allSettled(
+        threadIds.map((id) => setThreadLabels(id, labelIds))
+      );
+      handleRefresh();
+    },
+    [handleRefresh]
   );
 
   const onSelectThread = useCallback(
@@ -162,6 +216,7 @@ export default function InboxPage() {
               selectedId={selectedId}
               activeFolder={activeFolder}
               searchQuery={searchQuery}
+              labels={labels}
               onSearch={setSearchQuery}
               onSelect={onSelectThread}
               onStar={handleStar}
@@ -169,6 +224,11 @@ export default function InboxPage() {
               onDelete={handleDeleteInDrafts}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}
+              onBulkStar={handleBulkStar}
+              onBulkRead={handleBulkRead}
+              onBulkDelete={handleBulkDelete}
+              onBulkLabel={handleBulkLabel}
+              onCreateLabel={createLabel}
             />
           </ResizablePanel>
 

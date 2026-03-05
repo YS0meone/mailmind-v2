@@ -1,14 +1,18 @@
 import { cn } from "@/lib/utils";
 import { relativeTime, senderName, participantLabel } from "@/lib/format";
 import { Star, Trash2, Reply, MailOpen, Mail } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LabelChip } from "./label-chip";
 import type { Thread } from "@/types/email";
 
 interface ThreadListItemProps {
   thread: Thread;
   isSelected: boolean;
+  isChecked: boolean;
+  showCheckbox: boolean;
   activeFolder: string;
   onSelect: (thread: Thread) => void;
+  onCheck: (threadId: string, checked: boolean) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
   onToggleRead: (e: React.MouseEvent, thread: Thread) => void;
   onDelete: (threadId: string) => void;
@@ -29,8 +33,11 @@ function displayName(thread: Thread, activeFolder: string): string {
 export function ThreadListItem({
   thread,
   isSelected,
+  isChecked,
+  showCheckbox,
   activeFolder,
   onSelect,
+  onCheck,
   onStar,
   onToggleRead,
   onDelete,
@@ -44,17 +51,42 @@ export function ThreadListItem({
         "grid-cols-[minmax(160px,240px)_1fr_80px]",
         "hover:bg-accent hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]",
         isSelected && "bg-accent",
-        thread.is_unread && !isSelected && "bg-primary/[0.03]"
+        isChecked && "bg-primary/[0.06]",
+        thread.is_unread && !isSelected && !isChecked && "bg-primary/[0.03]"
       )}
     >
-      {/* Col 1: Unread dot + Sender */}
+      {/* Col 1: Checkbox/Unread dot + Sender */}
       <div className="flex items-center gap-2 min-w-0 pr-4">
-        <span
-          className={cn(
-            "size-1.5 shrink-0 rounded-full",
-            thread.is_unread ? "bg-foreground" : "bg-transparent"
+        <div
+          className="shrink-0 flex items-center justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {showCheckbox || isChecked ? (
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={(checked) => onCheck(thread.id, !!checked)}
+              className="size-3.5"
+            />
+          ) : (
+            <span className="group-hover:hidden">
+              <span
+                className={cn(
+                  "block size-1.5 rounded-full",
+                  thread.is_unread ? "bg-foreground" : "bg-transparent"
+                )}
+              />
+            </span>
           )}
-        />
+          {!showCheckbox && !isChecked && (
+            <span className="hidden group-hover:block">
+              <Checkbox
+                checked={false}
+                onCheckedChange={(checked) => onCheck(thread.id, !!checked)}
+                className="size-3.5"
+              />
+            </span>
+          )}
+        </div>
         <span
           className={cn(
             "truncate",

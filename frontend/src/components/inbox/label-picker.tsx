@@ -19,9 +19,10 @@ interface LabelPickerProps {
   selected: string[];
   onChange: (ids: string[]) => void;
   onCreate?: (payload: { name: string; color: string }) => Promise<Label>;
+  trigger?: React.ReactNode;
 }
 
-export function LabelPicker({ labels, selected, onChange, onCreate }: LabelPickerProps) {
+export function LabelPicker({ labels, selected, onChange, onCreate, trigger }: LabelPickerProps) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -50,9 +51,11 @@ export function LabelPicker({ labels, selected, onChange, onCreate }: LabelPicke
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8" title="Labels">
-          <Tag className="size-4" />
-        </Button>
+        {trigger || (
+          <Button variant="ghost" size="icon" className="size-8" title="Labels">
+            <Tag className="size-4" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="end">
         <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Labels</div>
