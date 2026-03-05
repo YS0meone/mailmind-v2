@@ -13,9 +13,11 @@ import {
   Sparkles,
   ChevronDown,
   Plus,
+  Settings,
 } from "lucide-react";
 import type { Label } from "@/types/email";
 import { getLabelColor } from "@/lib/label-colors";
+import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -53,6 +55,7 @@ interface SidebarProps {
   onCompose: () => void;
   onFolderChange: (folder: string) => void;
   onCreateLabel?: () => void;
+  onManageLabels?: () => void;
 }
 
 const mailboxFolders = [
@@ -71,6 +74,7 @@ export function AppSidebar({
   onCompose,
   onFolderChange,
   onCreateLabel,
+  onManageLabels,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
   const initials = userEmail
@@ -149,10 +153,22 @@ export function AppSidebar({
         {/* Labels */}
         <Collapsible defaultOpen className="group/labels">
             <SidebarGroup>
-              <SidebarGroupLabel asChild className="mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <SidebarGroupLabel asChild className="group/label-header mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                 <CollapsibleTrigger>
                   Labels
-                  <ChevronDown className="ml-auto size-4 transition-transform group-data-[state=open]/labels:rotate-180" />
+                  {onManageLabels && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onManageLabels();
+                      }}
+                      title="Manage labels"
+                      className="ml-auto flex size-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-sidebar-foreground/10 group-hover/label-header:opacity-100"
+                    >
+                      <Settings className="size-3" />
+                    </button>
+                  )}
+                  <ChevronDown className={cn("size-4 transition-transform group-data-[state=open]/labels:rotate-180", onManageLabels ? "" : "ml-auto")} />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <CollapsibleContent>

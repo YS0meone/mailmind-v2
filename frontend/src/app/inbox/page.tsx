@@ -15,6 +15,7 @@ import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
 import { ComposeWindow } from "@/components/inbox/compose-window";
+import { LabelManagerDialog } from "@/components/inbox/label-manager-dialog";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   ResizablePanelGroup,
@@ -53,9 +54,10 @@ export default function InboxPage() {
     setSelectedThread,
   } = useInbox();
 
-  const { labels, createLabel } = useLabels();
+  const { labels, createLabel, updateLabel, deleteLabel } = useLabels();
 
   const [composeOpen, setComposeOpen] = useState(false);
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
@@ -204,6 +206,7 @@ export default function InboxPage() {
           setComposeOpen(true);
         }}
         onFolderChange={setActiveFolder}
+        onManageLabels={() => setLabelManagerOpen(true)}
       />
       <SidebarInset className="overflow-hidden">
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
@@ -265,6 +268,15 @@ export default function InboxPage() {
         }}
         draft={editingDraft}
         onDraftDeleted={handleDraftDeleted}
+      />
+
+      <LabelManagerDialog
+        open={labelManagerOpen}
+        onOpenChange={setLabelManagerOpen}
+        labels={labels}
+        onUpdate={updateLabel}
+        onDelete={deleteLabel}
+        onCreate={createLabel}
       />
     </SidebarProvider>
   );
