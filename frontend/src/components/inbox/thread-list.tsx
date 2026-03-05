@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox, Send, Star, FileText, Trash2, RefreshCw, Loader2 } from "lucide-react";
+import { Inbox, Send, Star, FileText, Trash2, Mail, Tag, Archive, Search, RefreshCw, Loader2, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { ThreadListItem } from "./thread-list-item";
 import type { Thread } from "@/types/email";
@@ -31,6 +32,7 @@ const FOLDERS: Record<string, { label: string; icon: typeof Inbox }> = {
   trash: { label: "Trash", icon: Trash2 },
 };
 
+
 export function ThreadList({
   threads,
   loading,
@@ -44,6 +46,7 @@ export function ThreadList({
   onLoadMore,
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(true);
   const folder = FOLDERS[activeFolder] || FOLDERS.inbox;
   const FolderIcon = folder.icon;
 
@@ -53,46 +56,72 @@ export function ThreadList({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-13 shrink-0 items-center justify-between border-b px-4">
-        <div className="flex items-center gap-2">
-          <FolderIcon className="size-4" />
-          <h2 className="text-sm font-semibold">{folder.label}</h2>
+      <div className="flex h-13 shrink-0 items-center justify-between gap-2 border-b pl-5 pr-3">
+        <div className="relative w-full ">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search mail..."
+            className="h-8 pl-8 text-xs"
+          />
         </div>
-        <div className="flex items-center gap-1.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          onClick={onRefresh}
-        >
-          <RefreshCw className="size-3.5" />
-        </Button>
-        <Tabs
-          value={filter}
-          onValueChange={setFilter}
-          className="h-auto"
-        >
-          <TabsList className="h-7 p-0.5">
-            <TabsTrigger value="all" className="px-2.5 py-0.5 text-xs">
-              All
-            </TabsTrigger>
-            <TabsTrigger value="unread" className="px-2.5 py-0.5 text-xs">
-              Unread
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("size-7", showFilters && "bg-accent")}
+            onClick={() => {
+              setShowFilters((p) => !p);
+              if (showFilters) setFilter("all");
+            }}
+          >
+            <SlidersHorizontal className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={onRefresh}
+          >
+            <RefreshCw className="size-3.5" />
+          </Button>
         </div>
       </div>
+
+      {/* Filter bar */}
+      {showFilters && (
+        <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
+          <button
+            onClick={() => setFilter((f) => f === "unread" ? "all" : "unread")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors",
+              filter === "unread"
+                ? "bg-accent font-medium text-foreground"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            )}
+          >
+            <Mail className="size-3" />
+            Unread
+          </button>
+          <button className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors">
+            <Tag className="size-3" />
+            Labels
+          </button>
+          <button className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors">
+            <Archive className="size-3" />
+            Archived
+          </button>
+        </div>
+      )}
 
       {/* Thread list */}
       <ScrollArea className="flex-1 overflow-hidden">
         {loading ? (
           <div className="flex flex-col">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="grid h-8 grid-cols-[minmax(120px,220px)_1fr_auto] items-center border-b border-border/50 px-3">
+              <div key={i} className="grid h-10 grid-cols-[minmax(160px,300px)_1fr_80px] items-center border-b border-border/50 px-4">
                 <Skeleton className="h-3 w-[120px]" />
                 <Skeleton className="h-3 w-3/4" />
-                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-3 w-8 mx-auto" />
               </div>
             ))}
           </div>

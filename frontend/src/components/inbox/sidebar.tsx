@@ -8,15 +8,23 @@ import {
   FileText,
   PenSquare,
   LogOut,
-  Search,
   User,
+  MessageSquare,
+  Sparkles,
+  ChevronDown,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { MailmindIcon } from "@/components/mailmind-icon";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
@@ -89,7 +97,11 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Compose" onClick={onCompose}>
+              <SidebarMenuButton
+                tooltip="Compose"
+                onClick={onCompose}
+                className="bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground hover:shadow-md active:scale-[0.98] h-11 text-sm font-medium transition-all"
+              >
                 <PenSquare />
                 <span>Compose</span>
               </SidebarMenuButton>
@@ -97,36 +109,65 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Search */}
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Search">
-                <Search />
-                <span>Search mail...</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
         {/* Mailbox */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Mailbox</SidebarGroupLabel>
-          <SidebarMenu>
-            {mailboxFolders.map((folder) => (
-              <SidebarMenuItem key={folder.id}>
-                <SidebarMenuButton
-                  tooltip={folder.label}
-                  isActive={activeFolder === folder.id}
-                  onClick={() => onFolderChange(folder.id)}
-                >
-                  <folder.icon />
-                  <span>{folder.label}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        <Collapsible defaultOpen className="group/mailbox">
+          <SidebarGroup>
+            <SidebarGroupLabel asChild className="mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <CollapsibleTrigger>
+                Mailbox
+                <ChevronDown className="ml-auto size-4 transition-transform group-data-[state=open]/mailbox:rotate-180" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {mailboxFolders.map((folder) => (
+                    <SidebarMenuItem key={folder.id}>
+                      <SidebarMenuButton
+                        tooltip={folder.label}
+                        isActive={activeFolder === folder.id}
+                        onClick={() => onFolderChange(folder.id)}
+                      >
+                        <folder.icon />
+                        <span>{folder.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
+        {/* AI */}
+        <Collapsible defaultOpen className="group/intelligence">
+          <SidebarGroup>
+            <SidebarGroupLabel asChild className="mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <CollapsibleTrigger>
+                Intelligence
+                <ChevronDown className="ml-auto size-4 transition-transform group-data-[state=open]/intelligence:rotate-180" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Ask AI">
+                      <MessageSquare />
+                      <span>Ask AI</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Triage Agent">
+                      <Sparkles />
+                      <span>Triage Agent</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
 
       <SidebarFooter>
