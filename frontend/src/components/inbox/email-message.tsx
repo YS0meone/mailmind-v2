@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Reply, Forward } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import type { EmailMessage as EmailMessageType } from "@/types/email";
 
@@ -103,9 +105,17 @@ export function EmailMessage({ email }: EmailMessageProps) {
               to {email.to_list?.map((r) => r.name || r.email).join(", ")}
             </p>
           </div>
-          <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
-            {formatDate(email.received_at)}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button variant="ghost" size="icon" className="size-7" title="Reply">
+              <Reply className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="size-7" title="Forward">
+              <Forward className="size-3.5" />
+            </Button>
+            <span className="font-mono text-[11px] text-muted-foreground/70">
+              {formatDate(email.received_at)}
+            </span>
+          </div>
         </div>
         <div className="mt-3 overflow-hidden">
           {email.body_html ? (

@@ -2,7 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelRightClose, Reply, Forward, Trash2 } from "lucide-react";
+import { X, Trash2, Mail, MailOpen } from "lucide-react";
 import { EmailMessage } from "./email-message";
 import type { ThreadDetail } from "@/types/email";
 
@@ -41,19 +41,16 @@ export function EmailDetailPanel({
           onClick={onClose}
           title="Close"
         >
-          <PanelRightClose className="size-4" />
+          <X className="size-4" />
         </Button>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Button variant="ghost" size="icon" className="size-8" title="Reply">
-            <Reply className="size-4" />
-          </Button>
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="icon"
             className="size-8"
-            title="Forward"
+            title={thread.is_unread ? "Mark as read" : "Mark as unread"}
           >
-            <Forward className="size-4" />
+            {thread.is_unread ? <MailOpen className="size-4" /> : <Mail className="size-4" />}
           </Button>
           <Button
             variant="ghost"
