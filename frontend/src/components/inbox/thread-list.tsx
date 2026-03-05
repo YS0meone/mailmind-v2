@@ -20,6 +20,7 @@ interface ThreadListProps {
   activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+  onDelete: (threadId: string) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
 }
@@ -42,6 +43,7 @@ export function ThreadList({
   activeFolder,
   onSelect,
   onStar,
+  onDelete,
   onRefresh,
   onLoadMore,
 }: ThreadListProps) {
@@ -148,6 +150,7 @@ export function ThreadList({
                   activeFolder={activeFolder}
                   onSelect={onSelect}
                   onStar={onStar}
+                  onDelete={onDelete}
                 />
               ))}
             </InfiniteScroll>

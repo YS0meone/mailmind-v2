@@ -8,6 +8,7 @@ import {
   getThread,
   markThreadRead,
   toggleThreadStar,
+  deleteThread,
   triggerSync,
   getSyncStatus,
   getMe,
@@ -165,6 +166,26 @@ export function useInbox() {
     }
   };
 
+  const handleDelete = useCallback(async (threadId: string) => {
+    // Optimistic: remove from list and close detail if selected
+    setThreads((prev) => prev.filter((t) => t.id !== threadId));
+    if (selectedId === threadId) {
+      setSelectedId(null);
+      setSelectedThread(null);
+    }
+    try {
+      await deleteThread(threadId);
+    } catch {
+      // Revert: re-fetch on failure
+      listThreads(undefined, activeFolder)
+        .then((data) => {
+          setThreads(data);
+          setHasMore(data.length >= PAGE_SIZE);
+        })
+        .catch(() => {});
+    }
+  }, [selectedId, activeFolder]);
+
   const handleRefresh = useCallback(() => {
     setHasMore(true);
     listThreads(undefined, activeFolder)
@@ -198,6 +219,7 @@ export function useInbox() {
     setActiveFolder,
     handleSelectThread,
     handleStar,
+    handleDelete,
     handleRefresh,
     handleLoadMore,
     handleSignOut,

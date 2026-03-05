@@ -9,6 +9,7 @@ interface ThreadListItemProps {
   activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+  onDelete: (threadId: string) => void;
 }
 
 function displayName(thread: Thread, activeFolder: string): string {
@@ -29,6 +30,7 @@ export function ThreadListItem({
   activeFolder,
   onSelect,
   onStar,
+  onDelete,
 }: ThreadListItemProps) {
   return (
     <div
@@ -85,8 +87,11 @@ export function ThreadListItem({
         {relativeTime(thread.last_message_at)}
       </span>
 
-      {/* Hover actions — positioned at right edge of entire row */}
-      <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-1.5 bg-accent pl-3 group-hover:flex">
+      {/* Hover actions — hidden for trashed threads */}
+      <div className={cn(
+        "absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-1.5 bg-accent pl-3",
+        activeFolder !== "trash" && "group-hover:flex"
+      )}>
         <ActionBtn
           title={thread.is_unread ? "Mark as read" : "Mark as unread"}
           onClick={(e) => e.stopPropagation()}
@@ -108,7 +113,7 @@ export function ThreadListItem({
             )}
           />
         </ActionBtn>
-        <ActionBtn title="Delete" onClick={(e) => e.stopPropagation()}>
+        <ActionBtn title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(thread.id); }}>
           <Trash2 className="size-3.5" />
         </ActionBtn>
         <ActionBtn title="Reply" onClick={(e) => e.stopPropagation()}>

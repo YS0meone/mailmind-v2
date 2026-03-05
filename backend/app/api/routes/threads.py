@@ -95,6 +95,60 @@ async def get_thread(
     return thread
 
 
+@router.delete("/{thread_id}")
+async def delete_thread(
+    thread_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a thread to Trash. Updates each message's folder via Nylas."""
+    account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
+    result = await db.execute(
+        select(Thread)
+        .options(selectinload(Thread.emails))
+        .where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
+    )
+    thread = result.scalar_one_or_none()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    account = await db.get(EmailAccount, thread.account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    grant_id = account.nylas_grant_id
+
+    # Find the Trash folder ID from Nylas
+    folders = await nylas_service.list_folders(grant_id)
+    trash_folder = next(
+        (f for f in folders if "\\Trash" in (f.get("attributes") or [])),
+        None,
+    )
+    if not trash_folder:
+        # Fallback: look by name
+        trash_folder = next(
+            (f for f in folders if (f.get("name") or "").upper() == "TRASH"),
+            None,
+        )
+    if not trash_folder:
+        raise HTTPException(status_code=500, detail="Trash folder not found")
+
+    trash_id = trash_folder["id"]
+
+    # Move each message to Trash via Nylas
+    for email in thread.emails:
+        try:
+            await nylas_service.update_message(
+                grant_id, email.nylas_message_id, {"folders": [trash_id]}
+            )
+        except Exception as e:
+            logger.warning("Failed to trash message %s on Nylas: %s", email.id, e)
+
+    # Update local DB
+    thread.folder_ids = ["TRASH"]
+    await db.commit()
+    return {"status": "ok"}
+
+
 @router.patch("/{thread_id}/read")
 async def mark_thread_read(
     thread_id: uuid.UUID,

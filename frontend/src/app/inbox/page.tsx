@@ -29,6 +29,7 @@ export default function InboxPage() {
     setActiveFolder,
     handleSelectThread,
     handleStar,
+    handleDelete,
     handleRefresh,
     handleLoadMore,
     handleSignOut,
@@ -75,6 +76,7 @@ export default function InboxPage() {
               activeFolder={activeFolder}
               onSelect={onSelectThread}
               onStar={handleStar}
+              onDelete={handleDelete}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}
             />
@@ -93,6 +95,7 @@ export default function InboxPage() {
               thread={selectedThread}
               loading={detailLoading}
               onClose={onCloseDetail}
+              onDelete={handleDelete}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

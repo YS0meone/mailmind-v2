@@ -10,12 +10,14 @@ interface EmailDetailPanelProps {
   thread: ThreadDetail | null;
   loading: boolean;
   onClose: () => void;
+  onDelete: (threadId: string) => void;
 }
 
 export function EmailDetailPanel({
   thread,
   loading,
   onClose,
+  onDelete,
 }: EmailDetailPanelProps) {
   if (loading) {
     return (
@@ -57,6 +59,7 @@ export function EmailDetailPanel({
             size="icon"
             className="size-8"
             title="Delete"
+            onClick={() => onDelete(thread.id)}
           >
             <Trash2 className="size-4" />
           </Button>

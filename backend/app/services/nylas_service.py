@@ -95,6 +95,12 @@ async def send_message(grant_id: str, message: dict) -> dict:
     return _message_to_dict(response.data)
 
 
+async def list_folders(grant_id: str) -> list[dict]:
+    """List all folders/labels for a grant."""
+    response = await asyncio.to_thread(nylas.folders.list, grant_id)
+    return [{"id": f.id, "name": f.name, "attributes": getattr(f, "attributes", [])} for f in response.data]
+
+
 async def revoke_grant(grant_id: str) -> None:
     """Revoke/delete a Nylas grant."""
     await asyncio.to_thread(nylas.grants.destroy, grant_id)

@@ -97,6 +97,10 @@ export async function toggleThreadStar(threadId: string, starred: boolean) {
   });
 }
 
+export async function deleteThread(threadId: string) {
+  return backendFetch(`/api/v1/threads/${threadId}`, { method: "DELETE" });
+}
+
 export async function updateEmail(
   emailId: string,
   updates: { is_unread?: boolean; is_starred?: boolean }
