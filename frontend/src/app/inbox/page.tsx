@@ -33,6 +33,8 @@ export default function InboxPage() {
     setSearchQuery,
     handleSelectThread,
     handleStar,
+    handleToggleRead,
+    doToggleRead,
     handleDelete,
     handleRefresh,
     handleSent,
@@ -134,6 +136,7 @@ export default function InboxPage() {
               onSearch={setSearchQuery}
               onSelect={onSelectThread}
               onStar={handleStar}
+              onToggleRead={handleToggleRead}
               onDelete={handleDeleteInDrafts}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}
@@ -154,6 +157,7 @@ export default function InboxPage() {
               loading={detailLoading}
               onClose={onCloseDetail}
               onDelete={handleDelete}
+              onToggleRead={doToggleRead}
               onSent={handleSent}
             />
           </ResizablePanel>

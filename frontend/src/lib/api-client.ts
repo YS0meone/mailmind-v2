@@ -91,6 +91,13 @@ export async function markThreadRead(threadId: string) {
   return backendFetch(`/api/v1/threads/${threadId}/read`, { method: "PATCH" });
 }
 
+export async function toggleThreadRead(threadId: string, isUnread: boolean) {
+  return backendFetch(`/api/v1/threads/${threadId}/read`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_unread: isUnread }),
+  });
+}
+
 export async function toggleThreadStar(threadId: string, starred: boolean) {
   return backendFetch(`/api/v1/threads/${threadId}/star`, {
     method: "PATCH",

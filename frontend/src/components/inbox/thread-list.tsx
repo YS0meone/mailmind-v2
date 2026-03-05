@@ -22,6 +22,7 @@ interface ThreadListProps {
   onSearch: (query: string) => void;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+  onToggleRead: (e: React.MouseEvent, thread: Thread) => void;
   onDelete: (threadId: string) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
@@ -47,6 +48,7 @@ export function ThreadList({
   onSearch,
   onSelect,
   onStar,
+  onToggleRead,
   onDelete,
   onRefresh,
   onLoadMore,
@@ -171,6 +173,7 @@ export function ThreadList({
                   activeFolder={activeFolder}
                   onSelect={onSelect}
                   onStar={onStar}
+                  onToggleRead={onToggleRead}
                   onDelete={onDelete}
                 />
               ))}

@@ -16,6 +16,7 @@ interface EmailDetailPanelProps {
   loading: boolean;
   onClose: () => void;
   onDelete: (threadId: string) => void;
+  onToggleRead?: (threadId: string, isUnread: boolean) => void;
   onSent?: () => void;
 }
 
@@ -24,6 +25,7 @@ export function EmailDetailPanel({
   loading,
   onClose,
   onDelete,
+  onToggleRead,
   onSent,
 }: EmailDetailPanelProps) {
   const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
@@ -70,6 +72,7 @@ export function EmailDetailPanel({
             size="icon"
             className="size-8"
             title={thread.is_unread ? "Mark as read" : "Mark as unread"}
+            onClick={() => onToggleRead?.(thread.id, !thread.is_unread)}
           >
             {thread.is_unread ? <MailOpen className="size-4" /> : <Mail className="size-4" />}
           </Button>

@@ -170,12 +170,15 @@ async def delete_thread(
 
 
 @router.patch("/{thread_id}/read")
-async def mark_thread_read(
+async def toggle_thread_read(
     thread_id: uuid.UUID,
+    body: dict | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Mark a thread and all its emails as read. Syncs to Nylas."""
+    """Mark a thread and all its emails as read or unread. Syncs to Nylas."""
+    is_unread = body.get("is_unread", False) if body else False
+
     account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
     result = await db.execute(
         select(Thread)
@@ -190,19 +193,22 @@ async def mark_thread_read(
     account = await db.get(EmailAccount, thread.account_id)
     grant_id = account.nylas_grant_id if account else None
 
-    # Mark all unread emails as read
     for email in thread.emails:
-        if email.is_unread:
-            email.is_unread = False
+        if email.is_unread != is_unread:
+            email.is_unread = is_unread
             if grant_id:
                 try:
                     await nylas_service.update_message(
-                        grant_id, email.nylas_message_id, {"unread": False}
+                        grant_id, email.nylas_message_id,
+                        {"unread": is_unread},
                     )
                 except Exception as e:
-                    logger.warning("Failed to sync read status to Nylas for %s: %s", email.id, e)
+                    logger.warning(
+                        "Failed to sync read status to Nylas for %s: %s",
+                        email.id, e,
+                    )
 
-    thread.is_unread = False
+    thread.is_unread = is_unread
     await db.commit()
     return {"status": "ok"}
 

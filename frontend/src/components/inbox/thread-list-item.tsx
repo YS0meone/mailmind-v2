@@ -9,6 +9,7 @@ interface ThreadListItemProps {
   activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+  onToggleRead: (e: React.MouseEvent, thread: Thread) => void;
   onDelete: (threadId: string) => void;
 }
 
@@ -30,6 +31,7 @@ export function ThreadListItem({
   activeFolder,
   onSelect,
   onStar,
+  onToggleRead,
   onDelete,
 }: ThreadListItemProps) {
   return (
@@ -96,7 +98,7 @@ export function ThreadListItem({
           <>
             <ActionBtn
               title={thread.is_unread ? "Mark as read" : "Mark as unread"}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => onToggleRead(e, thread)}
             >
               {thread.is_unread ? (
                 <MailOpen className="size-3.5" />

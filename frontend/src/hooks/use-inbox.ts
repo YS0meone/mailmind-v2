@@ -7,6 +7,7 @@ import {
   listThreads,
   getThread,
   markThreadRead,
+  toggleThreadRead,
   toggleThreadStar,
   deleteThread,
   triggerSync,
@@ -201,6 +202,44 @@ export function useInbox() {
     }
   };
 
+  const doToggleRead = useCallback(
+    async (threadId: string, newUnread: boolean) => {
+      // Optimistic update
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === threadId ? { ...t, is_unread: newUnread } : t
+        )
+      );
+      setSelectedThread((prev) =>
+        prev && prev.id === threadId ? { ...prev, is_unread: newUnread } : prev
+      );
+      try {
+        await toggleThreadRead(threadId, newUnread);
+      } catch {
+        // Revert on failure
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.id === threadId ? { ...t, is_unread: !newUnread } : t
+          )
+        );
+        setSelectedThread((prev) =>
+          prev && prev.id === threadId
+            ? { ...prev, is_unread: !newUnread }
+            : prev
+        );
+      }
+    },
+    []
+  );
+
+  const handleToggleRead = useCallback(
+    (e: React.MouseEvent, thread: Thread) => {
+      e.stopPropagation();
+      doToggleRead(thread.id, !thread.is_unread);
+    },
+    [doToggleRead]
+  );
+
   const handleDelete = useCallback(async (threadId: string) => {
     // Optimistic: remove from list and close detail if selected
     setThreads((prev) => prev.filter((t) => t.id !== threadId));
@@ -311,6 +350,8 @@ export function useInbox() {
     setSearchQuery,
     handleSelectThread,
     handleStar,
+    handleToggleRead,
+    doToggleRead,
     handleDelete,
     handleRefresh,
     handleSent,
