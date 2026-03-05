@@ -115,8 +115,17 @@ async def send_email(
         "subject": body.subject,
         "body": body.body,
     }
+    if body.cc:
+        message_payload["cc"] = [p.model_dump() for p in body.cc]
+    if body.bcc:
+        message_payload["bcc"] = [p.model_dump() for p in body.bcc]
     if body.reply_to_message_id:
-        message_payload["reply_to_message_id"] = body.reply_to_message_id
+        # Resolve internal DB UUID to Nylas message ID
+        reply_email = await db.get(Email, uuid.UUID(body.reply_to_message_id))
+        if reply_email:
+            message_payload["reply_to_message_id"] = reply_email.nylas_message_id
+        else:
+            logger.warning("Reply-to email %s not found in DB", body.reply_to_message_id)
 
     sent = await nylas_service.send_message(account.nylas_grant_id, message_payload)
 

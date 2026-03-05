@@ -52,6 +52,8 @@ class EmailUpdateRequest(BaseModel):
 
 class SendEmailRequest(BaseModel):
     to: list[Participant]
+    cc: list[Participant] | None = None
+    bcc: list[Participant] | None = None
     subject: str
     body: str
     reply_to_message_id: str | None = None

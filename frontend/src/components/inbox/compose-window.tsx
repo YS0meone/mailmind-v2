@@ -52,6 +52,8 @@ export function ComposeWindow({ open, onOpenChange }: ComposeWindowProps) {
     try {
       await sendEmail({
         to: [{ email: to.trim() }],
+        ...(cc.trim() ? { cc: [{ email: cc.trim() }] } : {}),
+        ...(bcc.trim() ? { bcc: [{ email: bcc.trim() }] } : {}),
         subject,
         body,
       });

@@ -114,6 +114,8 @@ export async function updateEmail(
 
 export async function sendEmail(payload: {
   to: { name?: string; email: string }[];
+  cc?: { name?: string; email: string }[];
+  bcc?: { name?: string; email: string }[];
   subject: string;
   body: string;
   reply_to_message_id?: string;

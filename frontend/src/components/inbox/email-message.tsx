@@ -7,7 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Reply, Forward, Send, Trash2, X } from "lucide-react";
+import { Reply, ReplyAll, Forward, Send, Trash2, X, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 import { sendEmail } from "@/lib/api-client";
 import type { EmailMessage as EmailMessageType } from "@/types/email";
@@ -81,12 +87,45 @@ function SandboxedHtml({ html }: { html: string }) {
   );
 }
 
-type ComposeMode = "reply" | "forward";
+type ComposeMode = "reply" | "reply-all" | "forward";
+
+function buildQuotedHeader(email: EmailMessageType): string {
+  const date = email.received_at
+    ? new Date(email.received_at).toLocaleString()
+    : "";
+  const from = email.from_name
+    ? `${email.from_name} <${email.from_email}>`
+    : email.from_email || "";
+  return `On ${date}, ${from} wrote:`;
+}
+
+function getReplyAllRecipients(
+  email: EmailMessageType,
+  userEmail?: string
+): { to: string; cc: string } {
+  // To: original sender
+  const toEmails = [email.from_email || ""];
+  // Cc: original to + cc, excluding the user and the sender
+  const exclude = new Set(
+    [userEmail, email.from_email].filter(Boolean).map((e) => e!.toLowerCase())
+  );
+  const ccEmails = [
+    ...(email.to_list || []),
+    ...(email.cc_list || []),
+  ]
+    .map((p) => p.email)
+    .filter((e) => !exclude.has(e.toLowerCase()));
+  return {
+    to: toEmails.join(", "),
+    cc: [...new Set(ccEmails)].join(", "),
+  };
+}
 
 interface InlineReplyBoxProps {
   email: EmailMessageType;
   mode: ComposeMode;
   threadSubject?: string | null;
+  onModeChange: (mode: ComposeMode) => void;
   onClose: () => void;
 }
 
@@ -94,34 +133,56 @@ function InlineReplyBox({
   email,
   mode,
   threadSubject,
+  onModeChange,
   onClose,
 }: InlineReplyBoxProps) {
   const subject = threadSubject || email.subject || "";
-  const prefix = mode === "reply" ? "Re: " : "Fwd: ";
+  const prefix = mode === "forward" ? "Fwd: " : "Re: ";
   const prefixedSubject = subject.startsWith(prefix)
     ? subject
     : `${prefix}${subject}`;
 
+  const isReply = mode === "reply" || mode === "reply-all";
+  const replyAll = mode === "reply-all"
+    ? getReplyAllRecipients(email)
+    : null;
+
   const [to, setTo] = useState(
-    mode === "reply" ? email.from_email || "" : ""
+    isReply
+      ? (replyAll?.to || email.from_email || "")
+      : ""
   );
+  const [cc, setCc] = useState(replyAll?.cc || "");
+  const [showCc, setShowCc] = useState(!!replyAll?.cc);
   const [body, setBody] = useState("");
+  const [showQuote, setShowQuote] = useState(false);
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const quotedHeader = buildQuotedHeader(email);
+  const quotedSnippet = email.snippet || "";
 
   useEffect(() => {
-    textareaRef.current?.focus();
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.focus();
+      ta.setSelectionRange(0, 0);
+    }
   }, []);
 
   const handleSend = async () => {
     if (!to.trim()) return;
     setSending(true);
     try {
+      const toList = to.split(",").map((e) => ({ email: e.trim() })).filter((p) => p.email);
+      const ccList = cc.trim()
+        ? cc.split(",").map((e) => ({ email: e.trim() })).filter((p) => p.email)
+        : undefined;
       await sendEmail({
-        to: [{ email: to.trim() }],
+        to: toList,
+        ...(ccList ? { cc: ccList } : {}),
         subject: prefixedSubject,
         body,
-        ...(mode === "reply" ? { reply_to_message_id: email.id } : {}),
+        ...(isReply ? { reply_to_message_id: email.id } : {}),
       });
       onClose();
     } catch {
@@ -131,53 +192,106 @@ function InlineReplyBox({
     }
   };
 
-  const senderDisplay = mode === "reply"
-    ? `${email.from_name || email.from_email} (${email.from_email})`
-    : "";
-
   return (
     <div className="mt-4 rounded-lg border">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {mode === "reply" ? (
-            <Reply className="size-3.5" />
-          ) : (
-            <Forward className="size-3.5" />
-          )}
-          <span>{senderDisplay}</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          onClick={onClose}
-        >
-          <X className="size-3.5" />
-        </Button>
-      </div>
-
-      {/* To field (editable for forward, shown for reply) */}
-      <div className="flex items-center border-b px-3">
-        <Label className="w-10 shrink-0 text-sm text-muted-foreground">
-          To
-        </Label>
+      {/* Header: mode dropdown + To + close */}
+      <div className="flex items-center border-b pl-1 pr-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-muted-foreground">
+              {mode === "forward" ? (
+                <Forward className="size-3.5" />
+              ) : mode === "reply-all" ? (
+                <ReplyAll className="size-3.5" />
+              ) : (
+                <Reply className="size-3.5" />
+              )}
+              <ChevronDown className="size-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => onModeChange("reply")}>
+              <Reply className="mr-2 size-3.5" />
+              Reply
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onModeChange("reply-all")}>
+              <ReplyAll className="mr-2 size-3.5" />
+              Reply All
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onModeChange("forward")}>
+              <Forward className="mr-2 size-3.5" />
+              Forward
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <span className="shrink-0 text-sm text-muted-foreground">To</span>
         <Input
           value={to}
           onChange={(e) => setTo(e.target.value)}
           className="border-0 shadow-none focus-visible:ring-0"
-          readOnly={mode === "reply"}
         />
+        <div className="flex shrink-0 items-center gap-0.5">
+          {!showCc && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => setShowCc(true)}
+            >
+              Cc
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={onClose}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
       </div>
+
+      {/* Cc field */}
+      {showCc && (
+        <div className="flex items-center border-b px-3">
+          <Label className="w-10 shrink-0 text-sm text-muted-foreground">
+            Cc
+          </Label>
+          <Input
+            value={cc}
+            onChange={(e) => setCc(e.target.value)}
+            className="border-0 shadow-none focus-visible:ring-0"
+          />
+        </div>
+      )}
 
       {/* Body */}
       <Textarea
         ref={textareaRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Write your reply..."
-        className="min-h-[200px] resize-none border-0 shadow-none focus-visible:ring-0"
+        placeholder={mode === "forward" ? "Add a message..." : "Write your reply..."}
+        className="min-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0"
       />
+
+      {/* Collapsed quoted text */}
+      <div className="px-3 pb-2">
+        {!showQuote ? (
+          <button
+            type="button"
+            onClick={() => setShowQuote(true)}
+            className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+          >
+            ···
+          </button>
+        ) : (
+          <div className="border-l-2 border-muted-foreground/30 pl-3 text-xs text-muted-foreground">
+            <p className="font-medium">{quotedHeader}</p>
+            <p className="mt-1 whitespace-pre-wrap">{quotedSnippet}</p>
+          </div>
+        )}
+      </div>
 
       {/* Footer */}
       <Separator />
@@ -252,6 +366,17 @@ export function EmailMessage({ email, threadSubject }: EmailMessageProps) {
               variant="ghost"
               size="icon"
               className="size-7"
+              title="Reply All"
+              onClick={() =>
+                setComposeMode((m) => (m === "reply-all" ? null : "reply-all"))
+              }
+            >
+              <ReplyAll className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
               title="Forward"
               onClick={() =>
                 setComposeMode((m) => (m === "forward" ? null : "forward"))
@@ -278,6 +403,7 @@ export function EmailMessage({ email, threadSubject }: EmailMessageProps) {
             email={email}
             mode={composeMode}
             threadSubject={threadSubject}
+            onModeChange={setComposeMode}
             onClose={() => setComposeMode(null)}
           />
         )}
