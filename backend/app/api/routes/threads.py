@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +10,7 @@ from app.api.deps import get_current_user
 from app.db.database import get_db
 from app.models.email import Email
 from app.models.email_account import EmailAccount
+from app.models.label import ThreadLabel
 from app.models.thread import Thread
 from app.models.user import User
 from app.schemas.email import ThreadDetailResponse, ThreadResponse
@@ -43,6 +44,7 @@ async def list_threads(
     )
     query = (
         select(Thread)
+        .options(selectinload(Thread.labels))
         .where(Thread.account_id.in_(account_ids))
         .order_by(Thread.last_message_at.desc())
         .limit(limit)
@@ -83,6 +85,12 @@ async def list_threads(
     elif folder and folder in FOLDER_LABEL_MAP:
         label = FOLDER_LABEL_MAP[folder]
         query = query.where(Thread.folder_ids.contains([label]))
+    elif folder and folder.startswith("label:"):
+        label_id = folder[6:]
+        labeled_thread_ids = (
+            select(ThreadLabel.thread_id).where(ThreadLabel.label_id == uuid.UUID(label_id))
+        )
+        query = query.where(Thread.id.in_(labeled_thread_ids))
 
     if cursor:
         # cursor is a thread ID — skip past it
@@ -106,7 +114,7 @@ async def get_thread(
     )
     result = await db.execute(
         select(Thread)
-        .options(selectinload(Thread.emails))
+        .options(selectinload(Thread.emails), selectinload(Thread.labels))
         .where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
     )
     thread = result.scalar_one_or_none()

@@ -3,7 +3,8 @@
 import { useRef, useState, useCallback } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useInbox } from "@/hooks/use-inbox";
-import { getDraft } from "@/lib/api-client";
+import { useLabels } from "@/hooks/use-labels";
+import { getDraft, setThreadLabels } from "@/lib/api-client";
 import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
@@ -14,7 +15,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import type { Thread, Draft } from "@/types/email";
+import type { Thread, ThreadDetail, Draft } from "@/types/email";
 
 export default function InboxPage() {
   const {
@@ -42,11 +43,38 @@ export default function InboxPage() {
     handleSignOut,
     handleCloseDetail,
     refreshDrafts,
+    setThreads,
+    setSelectedThread,
   } = useInbox();
+
+  const { labels, createLabel } = useLabels();
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
+
+  const handleLabelsChange = useCallback(
+    async (threadId: string, labelIds: string[]) => {
+      try {
+        const updatedLabels = await setThreadLabels(threadId, labelIds);
+        // Update thread list
+        setThreads((prev: Thread[]) =>
+          prev.map((t: Thread) =>
+            t.id === threadId ? { ...t, labels: updatedLabels } : t
+          )
+        );
+        // Update detail panel
+        setSelectedThread((prev: ThreadDetail | null) =>
+          prev && prev.id === threadId
+            ? { ...prev, labels: updatedLabels }
+            : prev
+        );
+      } catch {
+        // ignore
+      }
+    },
+    []
+  );
 
   const onSelectThread = useCallback(
     (thread: Thread) => {
@@ -115,6 +143,7 @@ export default function InboxPage() {
       <AppSidebar
         userEmail={userEmail}
         activeFolder={activeFolder}
+        labels={labels}
         onSignOut={handleSignOut}
         onCompose={() => {
           setEditingDraft(null);
@@ -155,10 +184,13 @@ export default function InboxPage() {
             <EmailDetailPanel
               thread={selectedThread}
               loading={detailLoading}
+              allLabels={labels}
               onClose={onCloseDetail}
               onDelete={handleDelete}
               onToggleRead={doToggleRead}
               onSent={handleSent}
+              onLabelsChange={handleLabelsChange}
+              onCreateLabel={createLabel}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

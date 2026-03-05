@@ -7,26 +7,34 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { X, Trash2, Mail, MailOpen } from "lucide-react";
 import { EmailMessage } from "./email-message";
+import { LabelChip } from "./label-chip";
+import { LabelPicker } from "./label-picker";
 import { getDraftsByThread } from "@/lib/api-client";
-import type { ThreadDetail } from "@/types/email";
+import type { ThreadDetail, Label } from "@/types/email";
 import type { Draft } from "@/types/email";
 
 interface EmailDetailPanelProps {
   thread: ThreadDetail | null;
   loading: boolean;
+  allLabels?: Label[];
   onClose: () => void;
   onDelete: (threadId: string) => void;
   onToggleRead?: (threadId: string, isUnread: boolean) => void;
   onSent?: () => void;
+  onLabelsChange?: (threadId: string, labelIds: string[]) => void;
+  onCreateLabel?: (payload: { name: string; color: string }) => Promise<Label>;
 }
 
 export function EmailDetailPanel({
   thread,
   loading,
+  allLabels = [],
   onClose,
   onDelete,
   onToggleRead,
   onSent,
+  onLabelsChange,
+  onCreateLabel,
 }: EmailDetailPanelProps) {
   const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
 
@@ -67,6 +75,14 @@ export function EmailDetailPanel({
           <X className="size-4" />
         </Button>
         <div className="flex items-center gap-1.5">
+          {allLabels.length > 0 && onLabelsChange && (
+            <LabelPicker
+              labels={allLabels}
+              selected={thread.labels?.map((l) => l.id) ?? []}
+              onChange={(ids) => onLabelsChange(thread.id, ids)}
+              onCreate={onCreateLabel}
+            />
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -91,9 +107,17 @@ export function EmailDetailPanel({
       {/* Email messages */}
       <ScrollArea className="flex-1 overflow-hidden">
         <div className="mx-auto max-w-3xl p-6">
-          <h1 className="text-lg font-bold mb-6">
+          <h1 className="text-lg font-bold">
             {thread.subject || "(no subject)"}
           </h1>
+          {thread.labels && thread.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {thread.labels.map((label) => (
+                <LabelChip key={label.id} label={label} />
+              ))}
+            </div>
+          )}
+          <div className="mb-6" />
           <div className="flex flex-col gap-6">
             {thread.emails.map((email, i) => {
               const pendingDraft = threadDrafts.find(

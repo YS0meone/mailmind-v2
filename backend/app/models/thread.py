@@ -38,3 +38,4 @@ class Thread(Base):
 
     account: Mapped["EmailAccount"] = relationship()
     emails: Mapped[list["Email"]] = relationship(back_populates="thread", order_by="Email.received_at")
+    labels: Mapped[list["Label"]] = relationship(secondary="thread_labels", lazy="noload")

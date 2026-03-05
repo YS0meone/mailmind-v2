@@ -359,5 +359,7 @@ export function useInbox() {
     handleSignOut,
     handleCloseDetail,
     refreshDrafts,
+    setThreads,
+    setSelectedThread,
   };
 }

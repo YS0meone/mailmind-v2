@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.routes.labels import seed_preset_labels
 from app.db.database import get_db
 from app.models.email_account import EmailAccount
 from app.models.user import User
@@ -85,6 +86,8 @@ async def nylas_callback(
             nylas_grant_id=grant_id,
         )
         db.add(account)
+        await db.flush()
+        await seed_preset_labels(account.id, db)
 
     await db.commit()
     await db.refresh(user)

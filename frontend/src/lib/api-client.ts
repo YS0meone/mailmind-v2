@@ -192,6 +192,46 @@ export async function autocompleteContacts(
   return backendFetch(`/api/v1/contacts/autocomplete?${params}`);
 }
 
+// --- Labels ---
+
+export async function listLabels() {
+  return backendFetch("/api/v1/labels/");
+}
+
+export async function createLabel(payload: {
+  name: string;
+  color: string;
+  description?: string;
+}) {
+  return backendFetch("/api/v1/labels/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateLabel(
+  labelId: string,
+  payload: { name?: string; color?: string; description?: string; position?: number }
+) {
+  return backendFetch(`/api/v1/labels/${labelId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteLabel(labelId: string) {
+  return backendFetch(`/api/v1/labels/${labelId}`, { method: "DELETE" });
+}
+
+export async function setThreadLabels(threadId: string, labelIds: string[]) {
+  return backendFetch(`/api/v1/threads/${threadId}/labels`, {
+    method: "PUT",
+    body: JSON.stringify({ label_ids: labelIds }),
+  });
+}
+
+// --- Sync ---
+
 export async function triggerSync() {
   return backendFetch("/api/v1/sync/trigger", { method: "POST" });
 }

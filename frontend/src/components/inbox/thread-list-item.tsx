@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { relativeTime, senderName, participantLabel } from "@/lib/format";
 import { Star, Trash2, Reply, MailOpen, Mail } from "lucide-react";
+import { LabelChip } from "./label-chip";
 import type { Thread } from "@/types/email";
 
 interface ThreadListItemProps {
@@ -64,7 +65,7 @@ export function ThreadListItem({
         </span>
       </div>
 
-      {/* Col 2: Subject + Snippet */}
+      {/* Col 2: Subject + Snippet + Labels */}
       <div className="flex min-w-0 items-center gap-1.5 pr-2">
         <span
           className={cn(
@@ -81,6 +82,16 @@ export function ThreadListItem({
               {thread.snippet}
             </span>
           </>
+        )}
+        {thread.labels && thread.labels.length > 0 && (
+          <span className="ml-auto flex shrink-0 items-center gap-0.5">
+            {thread.labels.slice(0, 3).map((label) => (
+              <LabelChip key={label.id} label={label} />
+            ))}
+            {thread.labels.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{thread.labels.length - 3}</span>
+            )}
+          </span>
         )}
       </div>
 

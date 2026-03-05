@@ -9,6 +9,38 @@ class Participant(BaseModel):
     email: str
 
 
+class LabelBrief(BaseModel):
+    id: uuid.UUID
+    name: str
+    color: str
+
+    model_config = {"from_attributes": True}
+
+
+class LabelResponse(LabelBrief):
+    description: str | None
+    rules: dict | None
+    is_preset: bool
+    position: int
+
+
+class LabelCreateRequest(BaseModel):
+    name: str
+    color: str
+    description: str | None = None
+
+
+class LabelUpdateRequest(BaseModel):
+    name: str | None = None
+    color: str | None = None
+    description: str | None = None
+    position: int | None = None
+
+
+class ThreadLabelsRequest(BaseModel):
+    label_ids: list[uuid.UUID]
+
+
 class ThreadResponse(BaseModel):
     id: uuid.UUID
     subject: str | None
@@ -19,6 +51,7 @@ class ThreadResponse(BaseModel):
     participants: list[Participant] | None
     last_message_at: datetime | None
     message_count: int
+    labels: list[LabelBrief] = []
 
     model_config = {"from_attributes": True}
 

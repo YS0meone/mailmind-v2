@@ -12,7 +12,10 @@ import {
   MessageSquare,
   Sparkles,
   ChevronDown,
+  Plus,
 } from "lucide-react";
+import type { Label } from "@/types/email";
+import { getLabelColor } from "@/lib/label-colors";
 import {
   Collapsible,
   CollapsibleContent,
@@ -45,9 +48,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 interface SidebarProps {
   userEmail: string;
   activeFolder: string;
+  labels?: Label[];
   onSignOut: () => void;
   onCompose: () => void;
   onFolderChange: (folder: string) => void;
+  onCreateLabel?: () => void;
 }
 
 const mailboxFolders = [
@@ -61,9 +66,11 @@ const mailboxFolders = [
 export function AppSidebar({
   userEmail,
   activeFolder,
+  labels = [],
   onSignOut,
   onCompose,
   onFolderChange,
+  onCreateLabel,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
   const initials = userEmail
@@ -138,6 +145,51 @@ export function AppSidebar({
             </CollapsibleContent>
           </SidebarGroup>
         </Collapsible>
+
+        {/* Labels */}
+        <Collapsible defaultOpen className="group/labels">
+            <SidebarGroup>
+              <SidebarGroupLabel asChild className="mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                <CollapsibleTrigger>
+                  Labels
+                  <ChevronDown className="ml-auto size-4 transition-transform group-data-[state=open]/labels:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {labels.map((label) => {
+                      const colors = getLabelColor(label.color);
+                      return (
+                        <SidebarMenuItem key={label.id}>
+                          <SidebarMenuButton
+                            tooltip={label.name}
+                            isActive={activeFolder === `label:${label.id}`}
+                            onClick={() => onFolderChange(`label:${label.id}`)}
+                          >
+                            <span className={`size-2 rounded-full shrink-0 ${colors.dot}`} />
+                            <span>{label.name}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                    {onCreateLabel && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          tooltip="Create label"
+                          onClick={onCreateLabel}
+                          className="text-muted-foreground"
+                        >
+                          <Plus className="size-3.5" />
+                          <span>Add label</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
 
         {/* AI */}
         <Collapsible defaultOpen className="group/intelligence">

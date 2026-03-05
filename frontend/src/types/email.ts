@@ -3,6 +3,19 @@ export interface Participant {
   email: string;
 }
 
+export interface LabelBrief {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Label extends LabelBrief {
+  description: string | null;
+  rules: Record<string, unknown> | null;
+  is_preset: boolean;
+  position: number;
+}
+
 export interface Thread {
   id: string;
   subject: string | null;
@@ -13,6 +26,7 @@ export interface Thread {
   participants: Participant[] | null;
   last_message_at: string | null;
   message_count: number;
+  labels?: LabelBrief[];
 }
 
 export interface EmailMessage {
