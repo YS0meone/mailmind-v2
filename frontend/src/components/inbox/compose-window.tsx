@@ -77,7 +77,7 @@ export function ComposeWindow({ open, onOpenChange }: ComposeWindowProps) {
         onClick={() => setMinimized((m) => !m)}
       >
         <span className="text-sm font-medium text-primary-foreground">
-          New Message
+          {subject.trim() || "New Message"}
         </span>
         <div className="flex items-center gap-0.5">
           <Tooltip>
