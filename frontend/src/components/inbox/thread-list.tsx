@@ -87,12 +87,12 @@ export function ThreadList({
       {/* Thread list */}
       <ScrollArea className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex flex-col gap-1 p-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex flex-col gap-2 rounded-md p-3">
-                <Skeleton className="h-3.5 w-3/4" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-1/2" />
+          <div className="flex flex-col">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="grid h-8 grid-cols-[minmax(120px,220px)_1fr_auto] items-center border-b border-border/50 px-3">
+                <Skeleton className="h-3 w-[120px]" />
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-8" />
               </div>
             ))}
           </div>
@@ -104,7 +104,7 @@ export function ThreadList({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-px p-1">
+          <div className="flex flex-col">
             <InfiniteScroll
               hasMore={filter === "all" && hasMore}
               isLoading={loadingMore}
