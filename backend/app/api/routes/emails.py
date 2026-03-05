@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.database import get_db
+from app.models.draft import Draft
 from app.models.email import Email
 from app.models.email_account import EmailAccount
 from app.models.thread import Thread
@@ -171,6 +172,16 @@ async def send_email(
         thread_id_db = thread.id
 
     email = await upsert_message(db, sent, account.id, thread_id_db)
+
+    # Delete draft if one was associated with this send
+    if body.draft_id:
+        try:
+            draft = await db.get(Draft, uuid.UUID(body.draft_id))
+            if draft and draft.account_id == account.id:
+                await db.delete(draft)
+        except (ValueError, Exception):
+            logger.warning("Failed to delete draft %s on send", body.draft_id)
+
     await db.commit()
     await db.refresh(email)
     return email

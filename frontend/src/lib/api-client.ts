@@ -119,11 +119,62 @@ export async function sendEmail(payload: {
   subject: string;
   body: string;
   reply_to_message_id?: string;
+  draft_id?: string;
 }) {
   return backendFetch("/api/v1/emails/send", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+// --- Drafts ---
+
+export async function createDraft(payload: {
+  subject?: string;
+  body?: string;
+  to?: { name?: string; email: string }[];
+  cc?: { name?: string; email: string }[];
+  bcc?: { name?: string; email: string }[];
+  mode?: string;
+  reply_to_message_id?: string;
+  thread_id?: string;
+}) {
+  return backendFetch("/api/v1/drafts/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listDrafts() {
+  return backendFetch("/api/v1/drafts/");
+}
+
+export async function getDraft(draftId: string) {
+  return backendFetch(`/api/v1/drafts/${draftId}`);
+}
+
+export async function updateDraft(
+  draftId: string,
+  payload: {
+    subject?: string;
+    body?: string;
+    to?: { name?: string; email: string }[];
+    cc?: { name?: string; email: string }[];
+    bcc?: { name?: string; email: string }[];
+  }
+) {
+  return backendFetch(`/api/v1/drafts/${draftId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteDraft(draftId: string) {
+  return backendFetch(`/api/v1/drafts/${draftId}`, { method: "DELETE" });
+}
+
+export async function getDraftsByThread(threadId: string) {
+  return backendFetch(`/api/v1/drafts/by-thread/${threadId}`);
 }
 
 export async function autocompleteContacts(

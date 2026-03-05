@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { sendEmail } from "@/lib/api-client";
+import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,24 +15,67 @@ import {
 } from "@/components/ui/tooltip";
 import { Minus, X, Send, Trash2 } from "lucide-react";
 import { RecipientInput } from "./recipient-input";
-import type { Participant } from "@/types/email";
+import type { Participant, Draft } from "@/types/email";
 
 interface ComposeWindowProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSent?: () => void;
+  draft?: Draft | null;
+  onDraftDeleted?: () => void;
 }
 
-export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps) {
-  const [to, setTo] = useState<Participant[]>([]);
-  const [cc, setCc] = useState<Participant[]>([]);
-  const [bcc, setBcc] = useState<Participant[]>([]);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDeleted }: ComposeWindowProps) {
+  const [to, setTo] = useState<Participant[]>(draft?.to_list ?? []);
+  const [cc, setCc] = useState<Participant[]>(draft?.cc_list ?? []);
+  const [bcc, setBcc] = useState<Participant[]>(draft?.bcc_list ?? []);
+  const [subject, setSubject] = useState(draft?.subject ?? "");
+  const [body, setBody] = useState(draft?.body ?? "");
   const [sending, setSending] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [showCc, setShowCc] = useState(false);
-  const [showBcc, setShowBcc] = useState(false);
+  const [showCc, setShowCc] = useState((draft?.cc_list?.length ?? 0) > 0);
+  const [showBcc, setShowBcc] = useState((draft?.bcc_list?.length ?? 0) > 0);
+
+  const { draftId, saveStatus, scheduleSave, discard } = useDraftAutosave({
+    initialDraftId: draft?.id,
+    mode: "compose",
+  });
+
+  // Re-initialize state when draft prop changes (opening a different draft)
+  const prevDraftIdRef = useRef(draft?.id);
+  useEffect(() => {
+    if (draft?.id !== prevDraftIdRef.current) {
+      prevDraftIdRef.current = draft?.id;
+      setTo(draft?.to_list ?? []);
+      setCc(draft?.cc_list ?? []);
+      setBcc(draft?.bcc_list ?? []);
+      setSubject(draft?.subject ?? "");
+      setBody(draft?.body ?? "");
+      setShowCc((draft?.cc_list?.length ?? 0) > 0);
+      setShowBcc((draft?.bcc_list?.length ?? 0) > 0);
+    }
+  }, [draft]);
+
+  // Auto-save on content changes
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!open) return;
+    // Skip the very first render to avoid saving initial empty state
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      // But if resuming a draft, don't skip
+      if (!draft) return;
+    }
+    const hasContent = to.length > 0 || subject.trim() || body.trim();
+    if (hasContent) {
+      scheduleSave({ subject, body, to, cc, bcc });
+    }
+  }, [to, cc, bcc, subject, body, open, scheduleSave, draft]);
+
+  // Reset mounted ref when window closes
+  useEffect(() => {
+    if (!open) mountedRef.current = false;
+  }, [open]);
 
   const resetForm = () => {
     setTo([]);
@@ -43,10 +87,12 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
     setShowBcc(false);
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    await discard();
     onOpenChange(false);
     setMinimized(false);
     resetForm();
+    onDraftDeleted?.();
   };
 
   const handleSend = async () => {
@@ -59,8 +105,12 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
         ...(bcc.length > 0 ? { bcc } : {}),
         subject,
         body,
+        draft_id: draftId ?? undefined,
       });
-      handleClose();
+      onOpenChange(false);
+      setMinimized(false);
+      resetForm();
+      onDraftDeleted?.();
       onSent?.();
     } catch {
       // ignore
@@ -224,15 +274,22 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
           {/* Footer */}
           <Separator />
           <div className="flex items-center justify-between px-3 py-2">
-            <Button
-              onClick={handleSend}
-              disabled={sending || to.length === 0 || !subject}
-              size="sm"
-              className="gap-1.5"
-            >
-              <Send className="size-3.5" />
-              {sending ? "Sending..." : "Send"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSend}
+                disabled={sending || to.length === 0 || !subject}
+                size="sm"
+                className="gap-1.5"
+              >
+                <Send className="size-3.5" />
+                {sending ? "Sending..." : "Send"}
+              </Button>
+              {saveStatus !== "idle" && (
+                <span className="text-[11px] text-muted-foreground/70">
+                  {saveStatus === "saving" ? "Saving..." : "Draft saved"}
+                </span>
+              )}
+            </div>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

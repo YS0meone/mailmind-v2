@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useInbox } from "@/hooks/use-inbox";
+import { getDraft } from "@/lib/api-client";
 import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
@@ -13,7 +14,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import type { Thread } from "@/types/email";
+import type { Thread, Draft } from "@/types/email";
 
 export default function InboxPage() {
   const {
@@ -27,6 +28,7 @@ export default function InboxPage() {
     detailLoading,
     activeFolder,
     searchQuery,
+    drafts,
     setActiveFolder,
     setSearchQuery,
     handleSelectThread,
@@ -37,20 +39,45 @@ export default function InboxPage() {
     handleLoadMore,
     handleSignOut,
     handleCloseDetail,
+    refreshDrafts,
   } = useInbox();
 
   const [composeOpen, setComposeOpen] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
   const onSelectThread = useCallback(
     (thread: Thread) => {
+      // In drafts folder, clicking a compose draft opens ComposeWindow
+      if (activeFolder === "drafts") {
+        const draftItem = drafts.find((d) => d.id === thread.id);
+        if (draftItem && draftItem.mode === "compose") {
+          getDraft(draftItem.id)
+            .then((full: Draft) => {
+              setEditingDraft(full);
+              setComposeOpen(true);
+            })
+            .catch(() => {});
+          return;
+        }
+        // For reply/forward drafts, open the thread detail
+        if (draftItem?.thread_id) {
+          handleSelectThread({ ...thread, id: draftItem.thread_id });
+          const panel = detailPanelRef.current;
+          if (panel?.isCollapsed()) {
+            panel.resize("60%");
+          }
+          return;
+        }
+      }
+
       handleSelectThread(thread);
       const panel = detailPanelRef.current;
       if (panel?.isCollapsed()) {
         panel.resize("60%");
       }
     },
-    [handleSelectThread]
+    [handleSelectThread, activeFolder, drafts]
   );
 
   const onCloseDetail = useCallback(() => {
@@ -58,13 +85,39 @@ export default function InboxPage() {
     handleCloseDetail();
   }, [handleCloseDetail]);
 
+  const handleDraftDeleted = useCallback(() => {
+    setEditingDraft(null);
+    refreshDrafts();
+  }, [refreshDrafts]);
+
+  const handleDeleteInDrafts = useCallback(
+    async (threadId: string) => {
+      if (activeFolder === "drafts") {
+        // threadId is actually draft.id in drafts view
+        const { deleteDraft } = await import("@/lib/api-client");
+        try {
+          await deleteDraft(threadId);
+        } catch {
+          // ignore
+        }
+        refreshDrafts();
+        return;
+      }
+      handleDelete(threadId);
+    },
+    [activeFolder, handleDelete, refreshDrafts]
+  );
+
   return (
     <SidebarProvider className="h-dvh overflow-hidden">
       <AppSidebar
         userEmail={userEmail}
         activeFolder={activeFolder}
         onSignOut={handleSignOut}
-        onCompose={() => setComposeOpen(true)}
+        onCompose={() => {
+          setEditingDraft(null);
+          setComposeOpen(true);
+        }}
         onFolderChange={setActiveFolder}
       />
       <SidebarInset className="overflow-hidden">
@@ -81,7 +134,7 @@ export default function InboxPage() {
               onSearch={setSearchQuery}
               onSelect={onSelectThread}
               onStar={handleStar}
-              onDelete={handleDelete}
+              onDelete={handleDeleteInDrafts}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}
             />
@@ -107,7 +160,16 @@ export default function InboxPage() {
         </ResizablePanelGroup>
       </SidebarInset>
 
-      <ComposeWindow open={composeOpen} onOpenChange={setComposeOpen} onSent={handleSent} />
+      <ComposeWindow
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        onSent={() => {
+          handleSent();
+          refreshDrafts();
+        }}
+        draft={editingDraft}
+        onDraftDeleted={handleDraftDeleted}
+      />
     </SidebarProvider>
   );
 }

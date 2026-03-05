@@ -15,14 +15,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 import { sendEmail } from "@/lib/api-client";
+import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { RecipientInput } from "./recipient-input";
-import type { Participant, EmailMessage as EmailMessageType } from "@/types/email";
+import type { Participant, EmailMessage as EmailMessageType, Draft } from "@/types/email";
 
 interface EmailMessageProps {
   email: EmailMessageType;
   threadEmails?: EmailMessageType[];
   threadSubject?: string | null;
   onSent?: () => void;
+  pendingDraft?: Draft | null;
 }
 
 function SandboxedHtml({ html }: { html: string }) {
@@ -163,6 +165,7 @@ interface InlineReplyBoxProps {
   onModeChange: (mode: ComposeMode) => void;
   onClose: () => void;
   onSent?: () => void;
+  initialDraft?: Draft | null;
 }
 
 function InlineReplyBox({
@@ -173,6 +176,7 @@ function InlineReplyBox({
   onModeChange,
   onClose,
   onSent,
+  initialDraft,
 }: InlineReplyBoxProps) {
   const subject = threadSubject || email.subject || "";
   const prefix = mode === "forward" ? "Fwd: " : "Re: ";
@@ -185,20 +189,40 @@ function InlineReplyBox({
     ? getReplyAllRecipients(email)
     : null;
 
-  const initialTo: Participant[] = isReply
+  const defaultTo: Participant[] = isReply
     ? (replyAll?.to || (email.from_email ? [{ email: email.from_email, name: email.from_name || undefined }] : []))
     : [];
-  const initialCc: Participant[] = replyAll?.cc || [];
+  const defaultCc: Participant[] = replyAll?.cc || [];
 
-  const [to, setTo] = useState<Participant[]>(initialTo);
-  const [cc, setCc] = useState<Participant[]>(initialCc);
-  const [showCc, setShowCc] = useState(initialCc.length > 0);
-  const [body, setBody] = useState("");
+  const [to, setTo] = useState<Participant[]>(initialDraft?.to_list ?? defaultTo);
+  const [cc, setCc] = useState<Participant[]>(initialDraft?.cc_list ?? defaultCc);
+  const [showCc, setShowCc] = useState((initialDraft?.cc_list?.length ?? defaultCc.length) > 0);
+  const [body, setBody] = useState(initialDraft?.body ?? "");
   const [showQuote, setShowQuote] = useState(false);
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const quotedHeader = buildQuotedHeader(email);
   const quotedSnippet = email.snippet || "";
+
+  const { draftId, saveStatus, scheduleSave, discard } = useDraftAutosave({
+    initialDraftId: initialDraft?.id,
+    mode,
+    replyToMessageId: isReply ? email.id : undefined,
+    threadId: email.thread_id ?? undefined,
+  });
+
+  // Auto-save on content changes
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      if (!initialDraft) return;
+    }
+    const hasContent = to.length > 0 || body.trim();
+    if (hasContent) {
+      scheduleSave({ subject: prefixedSubject, body, to, cc, bcc: [] });
+    }
+  }, [to, cc, body, scheduleSave, prefixedSubject, initialDraft]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -221,6 +245,7 @@ function InlineReplyBox({
         subject: prefixedSubject,
         body: fullBody,
         ...(isReply ? { reply_to_message_id: email.id } : {}),
+        draft_id: draftId ?? undefined,
       });
       onClose();
       onSent?.();
@@ -229,6 +254,11 @@ function InlineReplyBox({
     } finally {
       setSending(false);
     }
+  };
+
+  const handleClose = async () => {
+    await discard();
+    onClose();
   };
 
   return (
@@ -280,7 +310,7 @@ function InlineReplyBox({
             variant="ghost"
             size="icon"
             className="size-7"
-            onClick={onClose}
+            onClick={handleClose}
           >
             <X className="size-3.5" />
           </Button>
@@ -327,20 +357,27 @@ function InlineReplyBox({
       {/* Footer */}
       <Separator />
       <div className="flex items-center justify-between px-3 py-2">
-        <Button
-          onClick={handleSend}
-          disabled={sending || to.length === 0}
-          size="sm"
-          className="gap-1.5"
-        >
-          <Send className="size-3.5" />
-          {sending ? "Sending..." : "Send"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleSend}
+            disabled={sending || to.length === 0}
+            size="sm"
+            className="gap-1.5"
+          >
+            <Send className="size-3.5" />
+            {sending ? "Sending..." : "Send"}
+          </Button>
+          {saveStatus !== "idle" && (
+            <span className="text-[11px] text-muted-foreground/70">
+              {saveStatus === "saving" ? "Saving..." : "Draft saved"}
+            </span>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="icon"
           className="size-8 text-muted-foreground"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <Trash2 className="size-4" />
         </Button>
@@ -349,8 +386,10 @@ function InlineReplyBox({
   );
 }
 
-export function EmailMessage({ email, threadEmails, threadSubject, onSent }: EmailMessageProps) {
-  const [composeMode, setComposeMode] = useState<ComposeMode | null>(null);
+export function EmailMessage({ email, threadEmails, threadSubject, onSent, pendingDraft }: EmailMessageProps) {
+  const [composeMode, setComposeMode] = useState<ComposeMode | null>(
+    pendingDraft ? (pendingDraft.mode as ComposeMode) : null
+  );
 
   const initials = (email.from_name || email.from_email || "?")
     .split(/[\s@]/)
@@ -438,6 +477,7 @@ export function EmailMessage({ email, threadEmails, threadSubject, onSent }: Ema
             onModeChange={setComposeMode}
             onClose={() => setComposeMode(null)}
             onSent={onSent}
+            initialDraft={pendingDraft?.mode === composeMode ? pendingDraft : null}
           />
         )}
       </div>

@@ -92,33 +92,39 @@ export function ThreadListItem({
         "absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-1.5 bg-accent pl-3",
         activeFolder !== "trash" && "group-hover:flex"
       )}>
-        <ActionBtn
-          title={thread.is_unread ? "Mark as read" : "Mark as unread"}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {thread.is_unread ? (
-            <MailOpen className="size-3.5" />
-          ) : (
-            <Mail className="size-3.5" />
-          )}
-        </ActionBtn>
-        <ActionBtn
-          title={thread.is_starred ? "Unstar" : "Star"}
-          onClick={(e) => onStar(e, thread)}
-        >
-          <Star
-            className={cn(
-              "size-3.5",
-              thread.is_starred && "fill-foreground"
-            )}
-          />
-        </ActionBtn>
+        {activeFolder !== "drafts" && (
+          <>
+            <ActionBtn
+              title={thread.is_unread ? "Mark as read" : "Mark as unread"}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {thread.is_unread ? (
+                <MailOpen className="size-3.5" />
+              ) : (
+                <Mail className="size-3.5" />
+              )}
+            </ActionBtn>
+            <ActionBtn
+              title={thread.is_starred ? "Unstar" : "Star"}
+              onClick={(e) => onStar(e, thread)}
+            >
+              <Star
+                className={cn(
+                  "size-3.5",
+                  thread.is_starred && "fill-foreground"
+                )}
+              />
+            </ActionBtn>
+          </>
+        )}
         <ActionBtn title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(thread.id); }}>
           <Trash2 className="size-3.5" />
         </ActionBtn>
-        <ActionBtn title="Reply" onClick={(e) => e.stopPropagation()}>
-          <Reply className="size-3.5" />
-        </ActionBtn>
+        {activeFolder !== "drafts" && (
+          <ActionBtn title="Reply" onClick={(e) => e.stopPropagation()}>
+            <Reply className="size-3.5" />
+          </ActionBtn>
+        )}
       </div>
     </div>
   );

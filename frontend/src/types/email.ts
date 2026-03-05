@@ -34,3 +34,26 @@ export interface EmailMessage {
 export interface ThreadDetail extends Thread {
   emails: EmailMessage[];
 }
+
+export interface Draft {
+  id: string;
+  subject: string | null;
+  body: string | null;
+  to_list: Participant[] | null;
+  cc_list: Participant[] | null;
+  bcc_list: Participant[] | null;
+  mode: "compose" | "reply" | "reply-all" | "forward";
+  reply_to_message_id: string | null;
+  thread_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DraftListItem {
+  id: string;
+  subject: string | null;
+  to_list: Participant[] | null;
+  mode: "compose" | "reply" | "reply-all" | "forward";
+  thread_id: string | null;
+  updated_at: string;
+}

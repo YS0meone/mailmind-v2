@@ -12,8 +12,9 @@ import {
   triggerSync,
   getSyncStatus,
   getMe,
+  listDrafts,
 } from "@/lib/api-client";
-import type { Thread, ThreadDetail } from "@/types/email";
+import type { Thread, ThreadDetail, DraftListItem } from "@/types/email";
 
 const PAGE_SIZE = 25;
 
@@ -31,6 +32,7 @@ export function useInbox() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
   const [searchQuery, setSearchQuery] = useState("");
+  const [drafts, setDrafts] = useState<DraftListItem[]>([]);
   const activeFolderRef = useRef(activeFolder);
   const searchQueryRef = useRef(searchQuery);
   activeFolderRef.current = activeFolder;
@@ -81,6 +83,34 @@ export function useInbox() {
   useEffect(() => {
     if (!isAuthenticated()) return;
 
+    // Drafts folder: fetch drafts instead of threads
+    if (activeFolder === "drafts") {
+      setLoading(true);
+      setHasMore(false);
+      listDrafts()
+        .then((data) => {
+          setDrafts(data);
+          // Map drafts to thread shape for the thread list
+          setThreads(
+            data.map((d: DraftListItem) => ({
+              id: d.id,
+              subject: d.subject || "(no subject)",
+              snippet: d.to_list?.[0]?.email || "Draft",
+              is_unread: false,
+              is_starred: false,
+              has_attachments: false,
+              participants: d.to_list,
+              last_message_at: d.updated_at,
+              message_count: 0,
+            }))
+          );
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+      return; // No polling for drafts
+    }
+
+    setDrafts([]);
     setLoading(true);
     setHasMore(true);
     listThreads(undefined, activeFolder, searchQuery || undefined)
@@ -222,6 +252,28 @@ export function useInbox() {
     setSelectedThread(null);
   };
 
+  const refreshDrafts = useCallback(() => {
+    if (activeFolderRef.current !== "drafts") return;
+    listDrafts()
+      .then((data) => {
+        setDrafts(data);
+        setThreads(
+          data.map((d: DraftListItem) => ({
+            id: d.id,
+            subject: d.subject || "(no subject)",
+            snippet: d.to_list?.[0]?.email || "Draft",
+            is_unread: false,
+            is_starred: false,
+            has_attachments: false,
+            participants: d.to_list,
+            last_message_at: d.updated_at,
+            message_count: 0,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   return {
     userEmail,
     threads,
@@ -233,6 +285,7 @@ export function useInbox() {
     detailLoading,
     activeFolder,
     searchQuery,
+    drafts,
     setActiveFolder,
     setSearchQuery,
     handleSelectThread,
@@ -243,5 +296,6 @@ export function useInbox() {
     handleLoadMore,
     handleSignOut,
     handleCloseDetail,
+    refreshDrafts,
   };
 }

@@ -1,10 +1,15 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { X, Trash2, Mail, MailOpen } from "lucide-react";
 import { EmailMessage } from "./email-message";
+import { getDraftsByThread } from "@/lib/api-client";
 import type { ThreadDetail } from "@/types/email";
+import type { Draft } from "@/types/email";
 
 interface EmailDetailPanelProps {
   thread: ThreadDetail | null;
@@ -21,6 +26,18 @@ export function EmailDetailPanel({
   onDelete,
   onSent,
 }: EmailDetailPanelProps) {
+  const [threadDrafts, setThreadDrafts] = useState<Draft[]>([]);
+
+  // Fetch drafts for this thread
+  useEffect(() => {
+    if (!thread) {
+      setThreadDrafts([]);
+      return;
+    }
+    getDraftsByThread(thread.id)
+      .then((drafts) => setThreadDrafts(drafts))
+      .catch(() => setThreadDrafts([]));
+  }, [thread?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (loading) {
     return (
       <div className="flex flex-col gap-4 p-6">
@@ -75,12 +92,23 @@ export function EmailDetailPanel({
             {thread.subject || "(no subject)"}
           </h1>
           <div className="flex flex-col gap-6">
-            {thread.emails.map((email, i) => (
-              <div key={email.id}>
-                {i > 0 && <Separator className="mb-6" />}
-                <EmailMessage email={email} threadEmails={thread.emails} threadSubject={thread.subject} onSent={onSent} />
-              </div>
-            ))}
+            {thread.emails.map((email, i) => {
+              const pendingDraft = threadDrafts.find(
+                (d) => d.reply_to_message_id === email.id
+              ) ?? null;
+              return (
+                <div key={email.id}>
+                  {i > 0 && <Separator className="mb-6" />}
+                  <EmailMessage
+                    email={email}
+                    threadEmails={thread.emails}
+                    threadSubject={thread.subject}
+                    onSent={onSent}
+                    pendingDraft={pendingDraft}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       </ScrollArea>

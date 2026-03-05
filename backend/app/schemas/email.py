@@ -57,3 +57,53 @@ class SendEmailRequest(BaseModel):
     subject: str
     body: str
     reply_to_message_id: str | None = None
+    draft_id: str | None = None
+
+
+# --- Drafts ---
+
+
+class DraftCreateRequest(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+    to: list[Participant] | None = None
+    cc: list[Participant] | None = None
+    bcc: list[Participant] | None = None
+    mode: str = "compose"
+    reply_to_message_id: str | None = None
+    thread_id: str | None = None
+
+
+class DraftUpdateRequest(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+    to: list[Participant] | None = None
+    cc: list[Participant] | None = None
+    bcc: list[Participant] | None = None
+
+
+class DraftResponse(BaseModel):
+    id: uuid.UUID
+    subject: str | None
+    body: str | None
+    to_list: list[Participant] | None
+    cc_list: list[Participant] | None
+    bcc_list: list[Participant] | None
+    mode: str
+    reply_to_message_id: uuid.UUID | None
+    thread_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DraftListItem(BaseModel):
+    id: uuid.UUID
+    subject: str | None
+    to_list: list[Participant] | None
+    mode: str
+    thread_id: uuid.UUID | None
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
