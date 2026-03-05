@@ -84,8 +84,8 @@ export function AppSidebar({
               <div className="flex aspect-square size-8 items-center justify-center">
                 <MailmindIcon className="size-5" />
               </div>
-              <span className="text-sm font-semibold tracking-tight">
-                mailmind
+              <span className="text-lg font-semibold tracking-tight font-[family-name:var(--font-display)]">
+                Mailmind
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
