@@ -58,33 +58,33 @@ export function ThreadListItem({
       {/* Col 1: Checkbox/Unread dot + Sender */}
       <div className="flex items-center gap-2 min-w-0 pr-4">
         <div
-          className="shrink-0 flex items-center justify-center"
+          className="size-3.5 shrink-0 flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           {showCheckbox || isChecked ? (
             <Checkbox
               checked={isChecked}
               onCheckedChange={(checked) => onCheck(thread.id, !!checked)}
-              className="size-3.5"
+              className="size-3.5 border-foreground/40"
             />
           ) : (
-            <span className="group-hover:hidden">
-              <span
-                className={cn(
-                  "block size-1.5 rounded-full",
-                  thread.is_unread ? "bg-foreground" : "bg-transparent"
-                )}
-              />
-            </span>
-          )}
-          {!showCheckbox && !isChecked && (
-            <span className="hidden group-hover:block">
-              <Checkbox
-                checked={false}
-                onCheckedChange={(checked) => onCheck(thread.id, !!checked)}
-                className="size-3.5"
-              />
-            </span>
+            <>
+              <span className="group-hover:hidden flex items-center justify-center size-3.5">
+                <span
+                  className={cn(
+                    "block size-1.5 rounded-full",
+                    thread.is_unread ? "bg-foreground" : "bg-transparent"
+                  )}
+                />
+              </span>
+              <span className="hidden group-hover:flex items-center justify-center size-3.5">
+                <Checkbox
+                  checked={false}
+                  onCheckedChange={(checked) => onCheck(thread.id, !!checked)}
+                  className="size-3.5 border-foreground/40"
+                />
+              </span>
+            </>
           )}
         </div>
         <span
