@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox, RefreshCw, Loader2 } from "lucide-react";
+import { Inbox, Send, Star, FileText, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { ThreadListItem } from "./thread-list-item";
@@ -23,12 +23,12 @@ interface ThreadListProps {
   onLoadMore: () => void;
 }
 
-const FOLDER_LABELS: Record<string, string> = {
-  inbox: "Inbox",
-  sent: "Sent",
-  starred: "Starred",
-  drafts: "Drafts",
-  trash: "Trash",
+const FOLDERS: Record<string, { label: string; icon: typeof Inbox }> = {
+  inbox: { label: "Inbox", icon: Inbox },
+  sent: { label: "Sent", icon: Send },
+  starred: { label: "Starred", icon: Star },
+  drafts: { label: "Drafts", icon: FileText },
+  trash: { label: "Trash", icon: Trash2 },
 };
 
 export function ThreadList({
@@ -44,6 +44,8 @@ export function ThreadList({
   onLoadMore,
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
+  const folder = FOLDERS[activeFolder] || FOLDERS.inbox;
+  const FolderIcon = folder.icon;
 
   const filtered =
     filter === "unread" ? threads.filter((t) => t.is_unread) : threads;
@@ -52,7 +54,10 @@ export function ThreadList({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex h-13 shrink-0 items-center justify-between border-b px-4">
-        <h2 className="text-sm font-semibold">{FOLDER_LABELS[activeFolder] || "Inbox"}</h2>
+        <div className="flex items-center gap-2">
+          <FolderIcon className="size-4" />
+          <h2 className="text-sm font-semibold">{folder.label}</h2>
+        </div>
         <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"

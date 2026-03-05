@@ -7,12 +7,12 @@ export function MailmindIcon({ className }: { className?: string }) {
     >
       <defs>
         <linearGradient id="mindFlow" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#4facfe" />
-          <stop offset="100%" stopColor="#00f2fe" />
+          <stop offset="0%" stopColor="#222" />
+          <stop offset="100%" stopColor="#888" />
         </linearGradient>
       </defs>
       <path
-        d="M 20 150 C 50 130, 40 30, 85 45 C 130 60, 100 140, 140 120 C 180 100, 170 50, 185 75"
+        d="M 20 150 C 50 130, 40 30, 85 45 C 130 60, 100 140, 140 120 C 165 108, 175 70, 180 55"
         fill="none"
         stroke="url(#mindFlow)"
         strokeWidth="16"
