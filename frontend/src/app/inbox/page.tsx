@@ -6,7 +6,7 @@ import { useInbox } from "@/hooks/use-inbox";
 import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
-import { ComposeDialog } from "@/components/inbox/compose-dialog";
+import { ComposeWindow } from "@/components/inbox/compose-window";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   ResizablePanelGroup,
@@ -98,7 +98,7 @@ export default function InboxPage() {
         </ResizablePanelGroup>
       </SidebarInset>
 
-      <ComposeDialog open={composeOpen} onOpenChange={setComposeOpen} />
+      <ComposeWindow open={composeOpen} onOpenChange={setComposeOpen} />
     </SidebarProvider>
   );
 }
