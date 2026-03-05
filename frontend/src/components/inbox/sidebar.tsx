@@ -157,16 +157,26 @@ export function AppSidebar({
                 <CollapsibleTrigger>
                   Labels
                   {onManageLabels && (
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         onManageLabels();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onManageLabels();
+                        }
                       }}
                       title="Manage labels"
                       className="ml-auto flex size-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-sidebar-foreground/10 group-hover/label-header:opacity-100"
                     >
                       <Settings className="size-3" />
-                    </button>
+                    </div>
                   )}
                   <ChevronDown className={cn("size-4 transition-transform group-data-[state=open]/labels:rotate-180", onManageLabels ? "" : "ml-auto")} />
                 </CollapsibleTrigger>
