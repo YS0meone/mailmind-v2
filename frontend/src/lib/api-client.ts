@@ -126,6 +126,14 @@ export async function sendEmail(payload: {
   });
 }
 
+export async function autocompleteContacts(
+  q: string
+): Promise<{ name?: string; email: string }[]> {
+  if (!q.trim()) return [];
+  const params = new URLSearchParams({ q, limit: "10" });
+  return backendFetch(`/api/v1/contacts/autocomplete?${params}`);
+}
+
 export async function triggerSync() {
   return backendFetch("/api/v1/sync/trigger", { method: "POST" });
 }

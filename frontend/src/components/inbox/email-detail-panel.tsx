@@ -78,7 +78,7 @@ export function EmailDetailPanel({
             {thread.emails.map((email, i) => (
               <div key={email.id}>
                 {i > 0 && <Separator className="mb-6" />}
-                <EmailMessage email={email} threadSubject={thread.subject} onSent={onSent} />
+                <EmailMessage email={email} threadEmails={thread.emails} threadSubject={thread.subject} onSent={onSent} />
               </div>
             ))}
           </div>

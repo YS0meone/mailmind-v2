@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { sendEmail } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -13,6 +13,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Minus, X, Send, Trash2 } from "lucide-react";
+import { RecipientInput } from "./recipient-input";
+import type { Participant } from "@/types/email";
 
 interface ComposeWindowProps {
   open: boolean;
@@ -21,9 +23,9 @@ interface ComposeWindowProps {
 }
 
 export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps) {
-  const [to, setTo] = useState("");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
+  const [to, setTo] = useState<Participant[]>([]);
+  const [cc, setCc] = useState<Participant[]>([]);
+  const [bcc, setBcc] = useState<Participant[]>([]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -32,9 +34,9 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
   const [showBcc, setShowBcc] = useState(false);
 
   const resetForm = () => {
-    setTo("");
-    setCc("");
-    setBcc("");
+    setTo([]);
+    setCc([]);
+    setBcc([]);
     setSubject("");
     setBody("");
     setShowCc(false);
@@ -48,13 +50,13 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
   };
 
   const handleSend = async () => {
-    if (!to || !subject) return;
+    if (to.length === 0 || !subject) return;
     setSending(true);
     try {
       await sendEmail({
-        to: [{ email: to.trim() }],
-        ...(cc.trim() ? { cc: [{ email: cc.trim() }] } : {}),
-        ...(bcc.trim() ? { bcc: [{ email: bcc.trim() }] } : {}),
+        to,
+        ...(cc.length > 0 ? { cc } : {}),
+        ...(bcc.length > 0 ? { bcc } : {}),
         subject,
         body,
       });
@@ -132,12 +134,10 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
             >
               To
             </Label>
-            <Input
+            <RecipientInput
               id="compose-to"
               value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="border-0 shadow-none focus-visible:ring-0"
-              placeholder=""
+              onChange={setTo}
             />
             <div className="flex shrink-0 gap-1">
               {!showCc && (
@@ -172,11 +172,10 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
               >
                 Cc
               </Label>
-              <Input
+              <RecipientInput
                 id="compose-cc"
                 value={cc}
-                onChange={(e) => setCc(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0"
+                onChange={setCc}
               />
             </div>
           )}
@@ -190,11 +189,10 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
               >
                 Bcc
               </Label>
-              <Input
+              <RecipientInput
                 id="compose-bcc"
                 value={bcc}
-                onChange={(e) => setBcc(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0"
+                onChange={setBcc}
               />
             </div>
           )}
@@ -228,7 +226,7 @@ export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps
           <div className="flex items-center justify-between px-3 py-2">
             <Button
               onClick={handleSend}
-              disabled={sending || !to || !subject}
+              disabled={sending || to.length === 0 || !subject}
               size="sm"
               className="gap-1.5"
             >

@@ -4,7 +4,6 @@ import { useRef, useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Reply, ReplyAll, Forward, Send, Trash2, X, ChevronDown } from "lucide-react";
@@ -16,10 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 import { sendEmail } from "@/lib/api-client";
-import type { EmailMessage as EmailMessageType } from "@/types/email";
+import { RecipientInput } from "./recipient-input";
+import type { Participant, EmailMessage as EmailMessageType } from "@/types/email";
 
 interface EmailMessageProps {
   email: EmailMessageType;
+  threadEmails?: EmailMessageType[];
   threadSubject?: string | null;
   onSent?: () => void;
 }
@@ -100,30 +101,63 @@ function buildQuotedHeader(email: EmailMessageType): string {
   return `On ${date}, ${from} wrote:`;
 }
 
+function buildForwardedMessage(email: EmailMessageType): string {
+  const date = email.received_at
+    ? new Date(email.received_at).toLocaleString()
+    : "";
+  const from = email.from_name
+    ? `${email.from_name} <${email.from_email}>`
+    : email.from_email || "";
+  const toStr = email.to_list?.map((p) => p.name ? `${p.name} <${p.email}>` : p.email).join(", ") || "";
+  const lines = [
+    `From: ${from}`,
+    `Date: ${date}`,
+    `Subject: ${email.subject || ""}`,
+    `To: ${toStr}`,
+  ];
+  if (email.cc_list?.length) {
+    const ccStr = email.cc_list.map((p) => p.name ? `${p.name} <${p.email}>` : p.email).join(", ");
+    lines.push(`Cc: ${ccStr}`);
+  }
+  lines.push("", email.snippet || "");
+  return lines.join("\n");
+}
+
+function buildForwardedBlock(emails: EmailMessageType[]): string {
+  const sorted = [...emails].sort(
+    (a, b) => new Date(a.received_at || 0).getTime() - new Date(b.received_at || 0).getTime()
+  );
+  const parts = sorted.map((e) => buildForwardedMessage(e));
+  return "---------- Forwarded message ----------\n" + parts.join("\n\n---\n\n");
+}
+
 function getReplyAllRecipients(
   email: EmailMessageType,
   userEmail?: string
-): { to: string; cc: string } {
+): { to: Participant[]; cc: Participant[] } {
   // To: original sender
-  const toEmails = [email.from_email || ""];
+  const toList: Participant[] = email.from_email
+    ? [{ email: email.from_email, name: email.from_name || undefined }]
+    : [];
   // Cc: original to + cc, excluding the user and the sender
   const exclude = new Set(
     [userEmail, email.from_email].filter(Boolean).map((e) => e!.toLowerCase())
   );
-  const ccEmails = [
-    ...(email.to_list || []),
-    ...(email.cc_list || []),
-  ]
-    .map((p) => p.email)
-    .filter((e) => !exclude.has(e.toLowerCase()));
-  return {
-    to: toEmails.join(", "),
-    cc: [...new Set(ccEmails)].join(", "),
-  };
+  const seen = new Set<string>();
+  const ccList: Participant[] = [];
+  for (const p of [...(email.to_list || []), ...(email.cc_list || [])]) {
+    const lower = p.email.toLowerCase();
+    if (!exclude.has(lower) && !seen.has(lower)) {
+      seen.add(lower);
+      ccList.push(p);
+    }
+  }
+  return { to: toList, cc: ccList };
 }
 
 interface InlineReplyBoxProps {
   email: EmailMessageType;
+  threadEmails: EmailMessageType[];
   mode: ComposeMode;
   threadSubject?: string | null;
   onModeChange: (mode: ComposeMode) => void;
@@ -133,6 +167,7 @@ interface InlineReplyBoxProps {
 
 function InlineReplyBox({
   email,
+  threadEmails,
   mode,
   threadSubject,
   onModeChange,
@@ -150,13 +185,14 @@ function InlineReplyBox({
     ? getReplyAllRecipients(email)
     : null;
 
-  const [to, setTo] = useState(
-    isReply
-      ? (replyAll?.to || email.from_email || "")
-      : ""
-  );
-  const [cc, setCc] = useState(replyAll?.cc || "");
-  const [showCc, setShowCc] = useState(!!replyAll?.cc);
+  const initialTo: Participant[] = isReply
+    ? (replyAll?.to || (email.from_email ? [{ email: email.from_email, name: email.from_name || undefined }] : []))
+    : [];
+  const initialCc: Participant[] = replyAll?.cc || [];
+
+  const [to, setTo] = useState<Participant[]>(initialTo);
+  const [cc, setCc] = useState<Participant[]>(initialCc);
+  const [showCc, setShowCc] = useState(initialCc.length > 0);
   const [body, setBody] = useState("");
   const [showQuote, setShowQuote] = useState(false);
   const [sending, setSending] = useState(false);
@@ -173,18 +209,17 @@ function InlineReplyBox({
   }, []);
 
   const handleSend = async () => {
-    if (!to.trim()) return;
+    if (to.length === 0) return;
     setSending(true);
     try {
-      const toList = to.split(",").map((e) => ({ email: e.trim() })).filter((p) => p.email);
-      const ccList = cc.trim()
-        ? cc.split(",").map((e) => ({ email: e.trim() })).filter((p) => p.email)
-        : undefined;
+      const fullBody = mode === "forward"
+        ? `${body}\n\n${buildForwardedBlock(threadEmails)}`
+        : body;
       await sendEmail({
-        to: toList,
-        ...(ccList ? { cc: ccList } : {}),
+        to,
+        ...(cc.length > 0 ? { cc } : {}),
         subject: prefixedSubject,
-        body,
+        body: fullBody,
         ...(isReply ? { reply_to_message_id: email.id } : {}),
       });
       onClose();
@@ -228,12 +263,8 @@ function InlineReplyBox({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="shrink-0 text-sm text-muted-foreground">To</span>
-        <Input
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="border-0 shadow-none focus-visible:ring-0"
-        />
+        <span className="shrink-0 pr-1 text-sm text-muted-foreground">To</span>
+        <RecipientInput value={to} onChange={setTo} />
         <div className="flex shrink-0 items-center gap-0.5">
           {!showCc && (
             <Button
@@ -262,11 +293,7 @@ function InlineReplyBox({
           <Label className="w-10 shrink-0 text-sm text-muted-foreground">
             Cc
           </Label>
-          <Input
-            value={cc}
-            onChange={(e) => setCc(e.target.value)}
-            className="border-0 shadow-none focus-visible:ring-0"
-          />
+          <RecipientInput value={cc} onChange={setCc} />
         </div>
       )}
 
@@ -302,7 +329,7 @@ function InlineReplyBox({
       <div className="flex items-center justify-between px-3 py-2">
         <Button
           onClick={handleSend}
-          disabled={sending || !to.trim()}
+          disabled={sending || to.length === 0}
           size="sm"
           className="gap-1.5"
         >
@@ -322,7 +349,7 @@ function InlineReplyBox({
   );
 }
 
-export function EmailMessage({ email, threadSubject, onSent }: EmailMessageProps) {
+export function EmailMessage({ email, threadEmails, threadSubject, onSent }: EmailMessageProps) {
   const [composeMode, setComposeMode] = useState<ComposeMode | null>(null);
 
   const initials = (email.from_name || email.from_email || "?")
@@ -405,6 +432,7 @@ export function EmailMessage({ email, threadSubject, onSent }: EmailMessageProps
         {composeMode && (
           <InlineReplyBox
             email={email}
+            threadEmails={threadEmails || [email]}
             mode={composeMode}
             threadSubject={threadSubject}
             onModeChange={setComposeMode}
