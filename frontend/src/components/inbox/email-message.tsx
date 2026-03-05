@@ -21,6 +21,7 @@ import type { EmailMessage as EmailMessageType } from "@/types/email";
 interface EmailMessageProps {
   email: EmailMessageType;
   threadSubject?: string | null;
+  onSent?: () => void;
 }
 
 function SandboxedHtml({ html }: { html: string }) {
@@ -127,6 +128,7 @@ interface InlineReplyBoxProps {
   threadSubject?: string | null;
   onModeChange: (mode: ComposeMode) => void;
   onClose: () => void;
+  onSent?: () => void;
 }
 
 function InlineReplyBox({
@@ -135,6 +137,7 @@ function InlineReplyBox({
   threadSubject,
   onModeChange,
   onClose,
+  onSent,
 }: InlineReplyBoxProps) {
   const subject = threadSubject || email.subject || "";
   const prefix = mode === "forward" ? "Fwd: " : "Re: ";
@@ -185,6 +188,7 @@ function InlineReplyBox({
         ...(isReply ? { reply_to_message_id: email.id } : {}),
       });
       onClose();
+      onSent?.();
     } catch {
       // ignore
     } finally {
@@ -318,7 +322,7 @@ function InlineReplyBox({
   );
 }
 
-export function EmailMessage({ email, threadSubject }: EmailMessageProps) {
+export function EmailMessage({ email, threadSubject, onSent }: EmailMessageProps) {
   const [composeMode, setComposeMode] = useState<ComposeMode | null>(null);
 
   const initials = (email.from_name || email.from_email || "?")
@@ -405,6 +409,7 @@ export function EmailMessage({ email, threadSubject }: EmailMessageProps) {
             threadSubject={threadSubject}
             onModeChange={setComposeMode}
             onClose={() => setComposeMode(null)}
+            onSent={onSent}
           />
         )}
       </div>

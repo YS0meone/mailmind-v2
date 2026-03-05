@@ -17,9 +17,10 @@ import { Minus, X, Send, Trash2 } from "lucide-react";
 interface ComposeWindowProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSent?: () => void;
 }
 
-export function ComposeWindow({ open, onOpenChange }: ComposeWindowProps) {
+export function ComposeWindow({ open, onOpenChange, onSent }: ComposeWindowProps) {
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -58,6 +59,7 @@ export function ComposeWindow({ open, onOpenChange }: ComposeWindowProps) {
         body,
       });
       handleClose();
+      onSent?.();
     } catch {
       // ignore
     } finally {

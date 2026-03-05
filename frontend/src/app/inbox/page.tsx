@@ -33,6 +33,7 @@ export default function InboxPage() {
     handleStar,
     handleDelete,
     handleRefresh,
+    handleSent,
     handleLoadMore,
     handleSignOut,
     handleCloseDetail,
@@ -100,12 +101,13 @@ export default function InboxPage() {
               loading={detailLoading}
               onClose={onCloseDetail}
               onDelete={handleDelete}
+              onSent={handleSent}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarInset>
 
-      <ComposeWindow open={composeOpen} onOpenChange={setComposeOpen} />
+      <ComposeWindow open={composeOpen} onOpenChange={setComposeOpen} onSent={handleSent} />
     </SidebarProvider>
   );
 }

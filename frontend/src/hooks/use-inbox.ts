@@ -201,6 +201,17 @@ export function useInbox() {
       .catch(() => {});
   }, [activeFolder]);
 
+  const handleSent = useCallback(() => {
+    // Refresh thread list
+    handleRefresh();
+    // Re-fetch current thread detail if open (reply adds a new message)
+    if (selectedId) {
+      getThread(selectedId)
+        .then((detail) => setSelectedThread(detail))
+        .catch(() => {});
+    }
+  }, [handleRefresh, selectedId]);
+
   const handleSignOut = () => {
     clearToken();
     router.replace("/login");
@@ -228,6 +239,7 @@ export function useInbox() {
     handleStar,
     handleDelete,
     handleRefresh,
+    handleSent,
     handleLoadMore,
     handleSignOut,
     handleCloseDetail,

@@ -13,6 +13,7 @@ from app.models.thread import Thread
 from app.models.user import User
 from app.schemas.email import EmailResponse, EmailUpdateRequest, SendEmailRequest
 from app.services import nylas_service
+from app.services.sync_service import upsert_message, _build_participants, _unix_to_dt
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/emails", tags=["emails"])
@@ -121,7 +122,10 @@ async def send_email(
         message_payload["bcc"] = [p.model_dump() for p in body.bcc]
     if body.reply_to_message_id:
         # Resolve internal DB UUID to Nylas message ID
-        reply_email = await db.get(Email, uuid.UUID(body.reply_to_message_id))
+        try:
+            reply_email = await db.get(Email, uuid.UUID(body.reply_to_message_id))
+        except ValueError:
+            reply_email = None
         if reply_email:
             message_payload["reply_to_message_id"] = reply_email.nylas_message_id
         else:
@@ -129,9 +133,44 @@ async def send_email(
 
     sent = await nylas_service.send_message(account.nylas_grant_id, message_payload)
 
-    # Store the sent message locally
-    from app.services.sync_service import upsert_message
-    email = await upsert_message(db, sent, account.id)
+    # Resolve the Nylas thread_id to a local thread
+    thread_id_db = None
+    nylas_thread_id = sent.get("thread_id")
+    if nylas_thread_id:
+        result = await db.execute(
+            select(Thread).where(
+                Thread.account_id == account.id,
+                Thread.nylas_thread_id == nylas_thread_id,
+            )
+        )
+        thread = result.scalar_one_or_none()
+        if thread:
+            # Update existing thread with the sent message info
+            msg_date = _unix_to_dt(sent.get("date"))
+            if msg_date and (not thread.last_message_at or msg_date > thread.last_message_at):
+                thread.last_message_at = msg_date
+                thread.snippet = sent.get("snippet")
+            thread.message_count = (thread.message_count or 0) + 1
+        else:
+            # Create a new thread (new compose or forward)
+            thread = Thread(
+                account_id=account.id,
+                nylas_thread_id=nylas_thread_id,
+                subject=sent.get("subject"),
+                snippet=sent.get("snippet"),
+                is_unread=False,
+                is_starred=False,
+                has_attachments=bool(sent.get("attachments")),
+                participants=_build_participants(sent),
+                folder_ids=sent.get("folders"),
+                last_message_at=_unix_to_dt(sent.get("date")),
+                message_count=1,
+            )
+            db.add(thread)
+        await db.flush()
+        thread_id_db = thread.id
+
+    email = await upsert_message(db, sent, account.id, thread_id_db)
     await db.commit()
     await db.refresh(email)
     return email

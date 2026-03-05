@@ -11,6 +11,7 @@ interface EmailDetailPanelProps {
   loading: boolean;
   onClose: () => void;
   onDelete: (threadId: string) => void;
+  onSent?: () => void;
 }
 
 export function EmailDetailPanel({
@@ -18,6 +19,7 @@ export function EmailDetailPanel({
   loading,
   onClose,
   onDelete,
+  onSent,
 }: EmailDetailPanelProps) {
   if (loading) {
     return (
@@ -76,7 +78,7 @@ export function EmailDetailPanel({
             {thread.emails.map((email, i) => (
               <div key={email.id}>
                 {i > 0 && <Separator className="mb-6" />}
-                <EmailMessage email={email} threadSubject={thread.subject} />
+                <EmailMessage email={email} threadSubject={thread.subject} onSent={onSent} />
               </div>
             ))}
           </div>
