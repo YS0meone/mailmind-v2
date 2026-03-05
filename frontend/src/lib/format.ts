@@ -18,10 +18,13 @@ export function relativeTime(dateStr: string | null): string {
   });
 }
 
+export function participantLabel(p: Participant): string {
+  return p.name || p.email.split("@")[0];
+}
+
 export function senderName(participants: Participant[] | null): string {
   if (!participants || participants.length === 0) return "Unknown";
-  const p = participants[0];
-  return p.name || p.email.split("@")[0];
+  return participantLabel(participants[0]);
 }
 
 export function formatDate(dateStr: string | null): string {

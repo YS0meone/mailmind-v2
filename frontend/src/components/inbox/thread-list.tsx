@@ -145,6 +145,7 @@ export function ThreadList({
                   key={thread.id}
                   thread={thread}
                   isSelected={selectedId === thread.id}
+                  activeFolder={activeFolder}
                   onSelect={onSelect}
                   onStar={onStar}
                 />

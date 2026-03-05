@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.email import Email
 from app.models.email_account import EmailAccount
@@ -59,6 +60,19 @@ def _parse_nylas_message(nylas_msg: dict, account_id, thread_id=None) -> dict:
         "has_attachments": bool(nylas_msg.get("attachments")),
         "received_at": _unix_to_dt(nylas_msg.get("date")),
     }
+
+
+def _build_participants(nylas_msg: dict) -> list[dict]:
+    """Build a de-duplicated participant list from a message's from/to/cc."""
+    seen: set[str] = set()
+    result: list[dict] = []
+    for field in ("from", "to", "cc"):
+        for p in nylas_msg.get(field) or []:
+            email = (p.get("email") or "").lower()
+            if email and email not in seen:
+                seen.add(email)
+                result.append({"name": p.get("name") or "", "email": email})
+    return result
 
 
 def _unix_to_dt(ts: int | None) -> datetime | None:
@@ -143,6 +157,7 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                 # Upsert thread if we have a thread_id
                 thread_id_db = None
                 nylas_thread_id = nylas_msg.get("thread_id")
+
                 if nylas_thread_id:
                     # Create a minimal thread record from the message
                     thread_result = await db.execute(
@@ -161,7 +176,7 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                             is_unread=nylas_msg.get("unread", False),
                             is_starred=nylas_msg.get("starred", False),
                             has_attachments=bool(nylas_msg.get("attachments")),
-                            participants=nylas_msg.get("from"),
+                            participants=_build_participants(nylas_msg),
                             folder_ids=nylas_msg.get("folders"),
                             last_message_at=_unix_to_dt(nylas_msg.get("date")),
                             message_count=1,
@@ -174,6 +189,26 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                         if msg_date and (not thread.last_message_at or msg_date > thread.last_message_at):
                             thread.last_message_at = msg_date
                             thread.snippet = nylas_msg.get("snippet")
+                        # Rebuild participants: update names + add new ones
+                        msg_participants = _build_participants(nylas_msg)
+                        new_by_email = {p["email"]: p["name"] for p in msg_participants}
+                        merged: list[dict] = []
+                        seen: set[str] = set()
+                        for p in (thread.participants or []):
+                            email = p.get("email", "").lower()
+                            if not email:
+                                continue  # drop invalid entries with empty email
+                            name = p.get("name", "")
+                            if not name and email in new_by_email:
+                                name = new_by_email[email]
+                            merged.append({"name": name, "email": email})
+                            seen.add(email)
+                        for p in msg_participants:
+                            if p["email"] not in seen:
+                                merged.append(p)
+                                seen.add(p["email"])
+                        thread.participants = merged
+                        flag_modified(thread, "participants")
                         # Sync unread from Nylas — if Nylas says unread, mark thread unread;
                         # otherwise keep current state (may have been read locally)
                         if nylas_msg.get("unread", False):

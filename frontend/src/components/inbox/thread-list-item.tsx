@@ -1,18 +1,32 @@
 import { cn } from "@/lib/utils";
-import { relativeTime, senderName } from "@/lib/format";
+import { relativeTime, senderName, participantLabel } from "@/lib/format";
 import { Star, Trash2, Reply, MailOpen, Mail } from "lucide-react";
 import type { Thread } from "@/types/email";
 
 interface ThreadListItemProps {
   thread: Thread;
   isSelected: boolean;
+  activeFolder: string;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
+}
+
+function displayName(thread: Thread, activeFolder: string): string {
+  if (activeFolder === "sent") {
+    // In sent folder, skip the first participant (the user) and show the recipient
+    const recipients = thread.participants?.slice(1);
+    if (recipients && recipients.length > 0) {
+      return `to: ${participantLabel(recipients[0])}`;
+    }
+    return "to: Unknown";
+  }
+  return senderName(thread.participants);
 }
 
 export function ThreadListItem({
   thread,
   isSelected,
+  activeFolder,
   onSelect,
   onStar,
 }: ThreadListItemProps) {
@@ -22,13 +36,13 @@ export function ThreadListItem({
       onClick={() => onSelect(thread)}
       className={cn(
         "group relative grid h-10 w-full items-center border-b border-border/50 px-4 text-left text-[12.5px] transition-colors",
-        "grid-cols-[minmax(160px,300px)_1fr_80px]",
+        "grid-cols-[minmax(160px,240px)_1fr_80px]",
         "hover:bg-accent hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]",
         isSelected && "bg-accent",
         thread.is_unread && !isSelected && "bg-primary/[0.03]"
       )}
     >
-      {/* Col 1: Unread dot + Sender + Subject */}
+      {/* Col 1: Unread dot + Sender */}
       <div className="flex items-center gap-2 min-w-0 pr-4">
         <span
           className={cn(
@@ -38,27 +52,32 @@ export function ThreadListItem({
         />
         <span
           className={cn(
-            "shrink-0",
+            "truncate",
             thread.is_unread ? "font-semibold text-foreground" : "text-muted-foreground"
           )}
         >
-          {senderName(thread.participants)}
+          {displayName(thread, activeFolder)}
         </span>
+      </div>
+
+      {/* Col 2: Subject + Snippet */}
+      <div className="flex min-w-0 items-center gap-1.5 pr-2">
         <span
           className={cn(
-            "truncate",
+            "shrink-0 truncate max-w-[50%]",
             thread.is_unread ? "font-medium text-foreground" : "text-foreground/80"
           )}
         >
           {thread.subject || "(no subject)"}
         </span>
-      </div>
-
-      {/* Col 2: Snippet */}
-      <div className="min-w-0 pr-2">
-        <p className="truncate text-muted-foreground/50">
-          {thread.snippet}
-        </p>
+        {thread.snippet && (
+          <>
+            <span className="shrink-0 text-muted-foreground/40">—</span>
+            <span className="truncate text-muted-foreground/50">
+              {thread.snippet}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Col 3: Timestamp */}
