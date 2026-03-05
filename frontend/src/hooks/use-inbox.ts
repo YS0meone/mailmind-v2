@@ -222,6 +222,27 @@ export function useInbox() {
   }, [selectedId, activeFolder]);
 
   const handleRefresh = useCallback(() => {
+    if (activeFolder === "drafts") {
+      listDrafts()
+        .then((data) => {
+          setDrafts(data);
+          setThreads(
+            data.map((d: DraftListItem) => ({
+              id: d.id,
+              subject: d.subject || "(no subject)",
+              snippet: d.to_list?.[0]?.email || "Draft",
+              is_unread: false,
+              is_starred: false,
+              has_attachments: false,
+              participants: d.to_list,
+              last_message_at: d.updated_at,
+              message_count: 0,
+            }))
+          );
+        })
+        .catch(() => {});
+      return;
+    }
     setHasMore(true);
     listThreads(undefined, activeFolder)
       .then((data) => {

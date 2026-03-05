@@ -87,7 +87,13 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
     setShowBcc(false);
   };
 
-  const handleClose = async () => {
+  const handleClose = () => {
+    onOpenChange(false);
+    setMinimized(false);
+    resetForm();
+  };
+
+  const handleDiscard = async () => {
     await discard();
     onOpenChange(false);
     setMinimized(false);
@@ -296,7 +302,7 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
                   variant="ghost"
                   size="icon"
                   className="size-8 text-muted-foreground"
-                  onClick={handleClose}
+                  onClick={handleDiscard}
                 >
                   <Trash2 className="size-4" />
                 </Button>

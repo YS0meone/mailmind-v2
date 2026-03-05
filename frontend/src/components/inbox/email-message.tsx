@@ -256,7 +256,7 @@ function InlineReplyBox({
     }
   };
 
-  const handleClose = async () => {
+  const handleDiscard = async () => {
     await discard();
     onClose();
   };
@@ -310,7 +310,7 @@ function InlineReplyBox({
             variant="ghost"
             size="icon"
             className="size-7"
-            onClick={handleClose}
+            onClick={onClose}
           >
             <X className="size-3.5" />
           </Button>
@@ -377,7 +377,7 @@ function InlineReplyBox({
           variant="ghost"
           size="icon"
           className="size-8 text-muted-foreground"
-          onClick={handleClose}
+          onClick={handleDiscard}
         >
           <Trash2 className="size-4" />
         </Button>
