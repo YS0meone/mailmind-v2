@@ -4,8 +4,16 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import UserDefinedType
 
 from app.db.database import Base
+
+
+class TSVector(UserDefinedType):
+    cache_ok = True
+
+    def get_col_spec(self):
+        return "TSVECTOR"
 
 
 class Email(Base):
@@ -44,6 +52,10 @@ class Email(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    # Full-text search (populated by database trigger)
+    search_vector = mapped_column(TSVector(), nullable=True)
+    search_text: Mapped[str | None] = mapped_column(Text)
 
     # AI fields (populated by triage agent in M3)
     ai_category: Mapped[str | None] = mapped_column(String(50))

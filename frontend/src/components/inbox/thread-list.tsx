@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Inbox, Send, Star, FileText, Trash2, Mail, Tag, Archive, Search, RefreshCw, Loader2, SlidersHorizontal } from "lucide-react";
@@ -18,6 +18,8 @@ interface ThreadListProps {
   hasMore: boolean;
   selectedId: string | null;
   activeFolder: string;
+  searchQuery: string;
+  onSearch: (query: string) => void;
   onSelect: (thread: Thread) => void;
   onStar: (e: React.MouseEvent, thread: Thread) => void;
   onDelete: (threadId: string) => void;
@@ -41,6 +43,8 @@ export function ThreadList({
   hasMore,
   selectedId,
   activeFolder,
+  searchQuery,
+  onSearch,
   onSelect,
   onStar,
   onDelete,
@@ -49,8 +53,23 @@ export function ThreadList({
 }: ThreadListProps) {
   const [filter, setFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(true);
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const folder = FOLDERS[activeFolder] || FOLDERS.inbox;
   const FolderIcon = folder.icon;
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearch(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onSearch(value);
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
 
   const filtered =
     filter === "unread" ? threads.filter((t) => t.is_unread) : threads;
@@ -64,6 +83,8 @@ export function ThreadList({
           <Input
             placeholder="Search mail..."
             className="h-8 pl-8 text-xs"
+            value={localSearch}
+            onChange={handleSearchChange}
           />
         </div>
         <div className="flex items-center gap-0.5">

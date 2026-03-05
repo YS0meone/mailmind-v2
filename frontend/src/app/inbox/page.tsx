@@ -26,7 +26,9 @@ export default function InboxPage() {
     hasMore,
     detailLoading,
     activeFolder,
+    searchQuery,
     setActiveFolder,
+    setSearchQuery,
     handleSelectThread,
     handleStar,
     handleDelete,
@@ -74,6 +76,8 @@ export default function InboxPage() {
               hasMore={hasMore}
               selectedId={selectedId}
               activeFolder={activeFolder}
+              searchQuery={searchQuery}
+              onSearch={setSearchQuery}
               onSelect={onSelectThread}
               onStar={handleStar}
               onDelete={handleDelete}

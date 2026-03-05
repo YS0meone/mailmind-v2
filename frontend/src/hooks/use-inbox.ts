@@ -30,8 +30,11 @@ export function useInbox() {
   const [hasMore, setHasMore] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
+  const [searchQuery, setSearchQuery] = useState("");
   const activeFolderRef = useRef(activeFolder);
+  const searchQueryRef = useRef(searchQuery);
   activeFolderRef.current = activeFolder;
+  searchQueryRef.current = searchQuery;
 
   // Fetch user on mount + kick off catch-up sync
   useEffect(() => {
@@ -59,7 +62,7 @@ export function useInbox() {
           if (allDone) break;
         }
         if (!cancelled) {
-          const data = await listThreads(undefined, activeFolderRef.current);
+          const data = await listThreads(undefined, activeFolderRef.current, searchQueryRef.current || undefined);
           console.log(`[sync] catch-up done, got ${data.length} threads`);
           setThreads(data);
           setHasMore(data.length >= PAGE_SIZE);
@@ -74,13 +77,13 @@ export function useInbox() {
     };
   }, [router]);
 
-  // Fetch threads when activeFolder changes + set up polling
+  // Fetch threads when activeFolder or searchQuery changes + set up polling
   useEffect(() => {
     if (!isAuthenticated()) return;
 
     setLoading(true);
     setHasMore(true);
-    listThreads(undefined, activeFolder)
+    listThreads(undefined, activeFolder, searchQuery || undefined)
       .then((data) => {
         setThreads(data);
         setHasMore(data.length >= PAGE_SIZE);
@@ -88,7 +91,9 @@ export function useInbox() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Poll for new emails every 30 seconds (first page only)
+    // Poll only when not searching (polling during search is noisy)
+    if (searchQuery) return;
+
     const interval = setInterval(() => {
       listThreads(undefined, activeFolder)
         .then((data) => {
@@ -105,7 +110,7 @@ export function useInbox() {
     }, 30_000);
 
     return () => clearInterval(interval);
-  }, [activeFolder]);
+  }, [activeFolder, searchQuery]);
 
   // Load more threads (infinite scroll)
   const handleLoadMore = useCallback(() => {
@@ -114,14 +119,14 @@ export function useInbox() {
     if (!lastThread) return;
 
     setLoadingMore(true);
-    listThreads(lastThread.id, activeFolder)
+    listThreads(lastThread.id, activeFolder, searchQuery || undefined)
       .then((data) => {
         setThreads((prev) => [...prev, ...data]);
         setHasMore(data.length >= PAGE_SIZE);
       })
       .catch(() => {})
       .finally(() => setLoadingMore(false));
-  }, [loadingMore, hasMore, threads, activeFolder]);
+  }, [loadingMore, hasMore, threads, activeFolder, searchQuery]);
 
   const handleSelectThread = useCallback(async (thread: Thread) => {
     setSelectedId(thread.id);
@@ -216,7 +221,9 @@ export function useInbox() {
     hasMore,
     detailLoading,
     activeFolder,
+    searchQuery,
     setActiveFolder,
+    setSearchQuery,
     handleSelectThread,
     handleStar,
     handleDelete,

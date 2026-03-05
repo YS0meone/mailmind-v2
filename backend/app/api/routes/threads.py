@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import or_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,6 +33,7 @@ async def list_threads(
     limit: int = Query(25, le=50),
     cursor: str | None = None,
     folder: str | None = None,
+    q: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -46,6 +47,25 @@ async def list_threads(
         .order_by(Thread.last_message_at.desc())
         .limit(limit)
     )
+
+    # Full-text + fuzzy search: find threads containing matching emails
+    if q and q.strip():
+        q_stripped = q.strip()
+        search_tsquery = func.websearch_to_tsquery(text("'english'"), q_stripped)
+        ilike_pattern = f"%{q_stripped}%"
+        matching_thread_ids = (
+            select(Email.thread_id)
+            .where(
+                Email.account_id.in_(account_ids),
+                Email.thread_id.is_not(None),
+                or_(
+                    Email.search_vector.op("@@")(search_tsquery),
+                    Email.search_text.ilike(ilike_pattern),
+                ),
+            )
+            .distinct()
+        )
+        query = query.where(Thread.id.in_(matching_thread_ids))
 
     if folder == "starred":
         query = query.where(Thread.is_starred == True)  # noqa: E712

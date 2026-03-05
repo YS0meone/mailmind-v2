@@ -74,10 +74,11 @@ export async function getMe() {
 
 // --- Threads & Emails ---
 
-export async function listThreads(cursor?: string, folder?: string) {
+export async function listThreads(cursor?: string, folder?: string, q?: string) {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   if (folder) params.set("folder", folder);
+  if (q) params.set("q", q);
   const qs = params.toString();
   return backendFetch(`/api/v1/threads/${qs ? `?${qs}` : ""}`);
 }
