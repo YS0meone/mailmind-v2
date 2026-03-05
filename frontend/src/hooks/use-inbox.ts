@@ -7,6 +7,7 @@ import {
   listThreads,
   getThread,
   markThreadRead,
+  toggleThreadStar,
   triggerSync,
   getSyncStatus,
   getMe,
@@ -146,11 +147,22 @@ export function useInbox() {
   const handleStar = async (e: React.MouseEvent, thread: Thread) => {
     e.stopPropagation();
     const newStarred = !thread.is_starred;
+    // Optimistic update
     setThreads((prev) =>
       prev.map((t) =>
         t.id === thread.id ? { ...t, is_starred: newStarred } : t
       )
     );
+    try {
+      await toggleThreadStar(thread.id, newStarred);
+    } catch {
+      // Revert on failure
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === thread.id ? { ...t, is_starred: !newStarred } : t
+        )
+      );
+    }
   };
 
   const handleRefresh = useCallback(() => {

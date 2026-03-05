@@ -90,6 +90,13 @@ export async function markThreadRead(threadId: string) {
   return backendFetch(`/api/v1/threads/${threadId}/read`, { method: "PATCH" });
 }
 
+export async function toggleThreadStar(threadId: string, starred: boolean) {
+  return backendFetch(`/api/v1/threads/${threadId}/star`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_starred: starred }),
+  });
+}
+
 export async function updateEmail(
   emailId: string,
   updates: { is_unread?: boolean; is_starred?: boolean }

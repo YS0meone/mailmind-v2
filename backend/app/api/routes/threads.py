@@ -131,3 +131,45 @@ async def mark_thread_read(
     thread.is_unread = False
     await db.commit()
     return {"status": "ok"}
+
+
+@router.patch("/{thread_id}/star")
+async def toggle_thread_star(
+    thread_id: uuid.UUID,
+    body: dict,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Star or unstar a thread and all its emails. Syncs to Nylas."""
+    is_starred = body.get("is_starred")
+    if is_starred is None:
+        raise HTTPException(status_code=422, detail="is_starred is required")
+
+    account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
+    result = await db.execute(
+        select(Thread)
+        .options(selectinload(Thread.emails))
+        .where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
+    )
+    thread = result.scalar_one_or_none()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    # Get grant_id for Nylas sync
+    account = await db.get(EmailAccount, thread.account_id)
+    grant_id = account.nylas_grant_id if account else None
+
+    # Update all emails
+    for email in thread.emails:
+        email.is_starred = is_starred
+        if grant_id:
+            try:
+                await nylas_service.update_message(
+                    grant_id, email.nylas_message_id, {"starred": is_starred}
+                )
+            except Exception as e:
+                logger.warning("Failed to sync star status to Nylas for %s: %s", email.id, e)
+
+    thread.is_starred = is_starred
+    await db.commit()
+    return {"status": "ok"}
