@@ -103,7 +103,7 @@ async def revoke_grant(grant_id: str) -> None:
 # --- Converters: SDK objects → plain dicts ---
 
 def _participant_to_dict(p) -> dict:
-    return {"name": getattr(p, "name", None) or "", "email": getattr(p, "email", "") or ""}
+    return {"name": p.get("name", "") or "", "email": p.get("email", "") or ""}
 
 
 def _message_to_dict(msg) -> dict:
