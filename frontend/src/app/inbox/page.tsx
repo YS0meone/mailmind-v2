@@ -4,6 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useInbox } from "@/hooks/use-inbox";
 import { useLabels } from "@/hooks/use-labels";
+import { useProposals } from "@/hooks/use-proposals";
 import {
   getDraft,
   setThreadLabels,
@@ -16,6 +17,7 @@ import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
 import { ComposeWindow } from "@/components/inbox/compose-window";
 import { AiChatPanel } from "@/components/inbox/ai-chat-panel";
+import { AgentInboxDialog } from "@/components/inbox/agent-inbox-dialog";
 import { LabelEditDialog } from "@/components/inbox/label-edit-dialog";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
@@ -56,9 +58,11 @@ export default function InboxPage() {
   } = useInbox();
 
   const { labels, createLabel, updateLabel, deleteLabel } = useLabels();
+  const { pendingCount } = useProposals();
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [agentInboxOpen, setAgentInboxOpen] = useState(false);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
@@ -218,6 +222,8 @@ export default function InboxPage() {
           setLabelDialogOpen(true);
         }}
         onAskAI={() => setChatOpen(true)}
+        onAgentInbox={() => setAgentInboxOpen(true)}
+        pendingProposalCount={pendingCount}
       />
       <SidebarInset className="overflow-hidden">
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
@@ -282,6 +288,8 @@ export default function InboxPage() {
         draft={editingDraft}
         onDraftDeleted={handleDraftDeleted}
       />
+
+      <AgentInboxDialog open={agentInboxOpen} onOpenChange={setAgentInboxOpen} />
 
       <LabelEditDialog
         open={labelDialogOpen}

@@ -57,6 +57,8 @@ interface SidebarProps {
   onAddLabel?: () => void;
   onEditLabel?: (label: Label) => void;
   onAskAI?: () => void;
+  onAgentInbox?: () => void;
+  pendingProposalCount?: number;
 }
 
 const mailboxFolders = [
@@ -77,6 +79,8 @@ export function AppSidebar({
   onAddLabel,
   onEditLabel,
   onAskAI,
+  onAgentInbox,
+  pendingProposalCount = 0,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
   const initials = userEmail
@@ -240,9 +244,14 @@ export function AppSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Triage Agent">
+                    <SidebarMenuButton tooltip="Agent Inbox" onClick={onAgentInbox}>
                       <Sparkles />
-                      <span>Triage Agent</span>
+                      <span>Agent Inbox</span>
+                      {pendingProposalCount > 0 && (
+                        <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                          {pendingProposalCount > 99 ? "99+" : pendingProposalCount}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>

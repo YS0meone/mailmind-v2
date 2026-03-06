@@ -354,6 +354,56 @@ export function streamChat(
   return controller;
 }
 
+// --- Proposals ---
+
+export interface Proposal {
+  id: string;
+  account_id: string;
+  thread_id: string | null;
+  type: string;
+  status: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ProposalListResponse {
+  items: Proposal[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export async function listProposals(params?: {
+  status?: string;
+  type?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<ProposalListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
+  const query = qs.toString();
+  return backendFetch(`/api/v1/proposals/${query ? `?${query}` : ""}`);
+}
+
+export async function countProposals(
+  status = "pending",
+): Promise<{ count: number }> {
+  return backendFetch(`/api/v1/proposals/count?status=${status}`);
+}
+
+export async function updateProposal(
+  proposalId: string,
+  status: "accepted" | "rejected" | "dismissed",
+): Promise<{ id: string; status: string }> {
+  return backendFetch(`/api/v1/proposals/${proposalId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
 // --- Sync ---
 
 export async function triggerSync() {
