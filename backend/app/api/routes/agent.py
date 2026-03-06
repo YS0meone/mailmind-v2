@@ -1,4 +1,4 @@
-"""Agent routes — triage trigger and AI compose streaming."""
+"""Agent routes — triage trigger, AI compose streaming, and AI chat."""
 
 import json
 import logging
@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.agent.chat import stream_chat
 from app.agent.compose import ComposeState, stream_compose
 from app.api.deps import get_current_user
 from app.db.database import async_session
@@ -77,6 +78,56 @@ async def compose_email(
             yield f"event: done\ndata: {json.dumps({'full_text': full_text})}\n\n"
         except Exception as e:
             logger.exception("Compose streaming failed")
+            yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+@router.post("/agent/chat")
+async def chat(
+    body: ChatRequest,
+    user: User = Depends(get_current_user),
+):
+    """Stream AI chat responses via SSE, powered by a ReAct agent with thread search."""
+
+    async def event_stream():
+        full_text = ""
+        try:
+            async with async_session() as db:
+                # Resolve account_id
+                result = await db.execute(
+                    select(EmailAccount.id).where(EmailAccount.user_id == user.id).limit(1)
+                )
+                account_id = result.scalar_one_or_none()
+                if not account_id:
+                    err = json.dumps({"detail": "No email account linked"})
+                    yield f"event: error\ndata: {err}\n\n"
+                    return
+
+                messages = [{"role": m.role, "content": m.content} for m in body.messages]
+                async for chunk in stream_chat(messages, db, account_id):
+                    full_text += chunk
+                    yield f"event: token\ndata: {json.dumps({'content': chunk})}\n\n"
+
+            yield f"event: done\ndata: {json.dumps({'full_text': full_text})}\n\n"
+        except Exception as e:
+            logger.exception("Chat streaming failed")
             yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
 
     return StreamingResponse(

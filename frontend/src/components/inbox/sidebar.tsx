@@ -56,6 +56,7 @@ interface SidebarProps {
   onFolderChange: (folder: string) => void;
   onAddLabel?: () => void;
   onEditLabel?: (label: Label) => void;
+  onAskAI?: () => void;
 }
 
 const mailboxFolders = [
@@ -75,6 +76,7 @@ export function AppSidebar({
   onFolderChange,
   onAddLabel,
   onEditLabel,
+  onAskAI,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
   const initials = userEmail
@@ -232,7 +234,7 @@ export function AppSidebar({
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Ask AI">
+                    <SidebarMenuButton tooltip="Ask AI" onClick={onAskAI}>
                       <MessageSquare />
                       <span>Ask AI</span>
                     </SidebarMenuButton>
