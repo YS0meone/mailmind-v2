@@ -202,6 +202,7 @@ export async function createLabel(payload: {
   name: string;
   color: string;
   description?: string;
+  rules?: Record<string, unknown> | null;
 }) {
   return backendFetch("/api/v1/labels/", {
     method: "POST",
@@ -211,7 +212,7 @@ export async function createLabel(payload: {
 
 export async function updateLabel(
   labelId: string,
-  payload: { name?: string; color?: string; description?: string; position?: number }
+  payload: { name?: string; color?: string; description?: string; rules?: Record<string, unknown> | null; position?: number }
 ) {
   return backendFetch(`/api/v1/labels/${labelId}`, {
     method: "PATCH",

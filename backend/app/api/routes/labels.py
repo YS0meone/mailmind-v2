@@ -111,6 +111,7 @@ async def create_label(
         name=body.name,
         color=body.color,
         description=body.description,
+        rules=body.rules,
         position=next_pos,
     )
     db.add(label)

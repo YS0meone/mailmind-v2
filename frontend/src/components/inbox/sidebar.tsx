@@ -13,7 +13,7 @@ import {
   Sparkles,
   ChevronDown,
   Plus,
-  Settings,
+  Pencil,
 } from "lucide-react";
 import type { Label } from "@/types/email";
 import { getLabelColor } from "@/lib/label-colors";
@@ -54,8 +54,8 @@ interface SidebarProps {
   onSignOut: () => void;
   onCompose: () => void;
   onFolderChange: (folder: string) => void;
-  onCreateLabel?: () => void;
-  onManageLabels?: () => void;
+  onAddLabel?: () => void;
+  onEditLabel?: (label: Label) => void;
 }
 
 const mailboxFolders = [
@@ -73,8 +73,8 @@ export function AppSidebar({
   onSignOut,
   onCompose,
   onFolderChange,
-  onCreateLabel,
-  onManageLabels,
+  onAddLabel,
+  onEditLabel,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
   const initials = userEmail
@@ -156,29 +156,29 @@ export function AppSidebar({
               <SidebarGroupLabel asChild className="group/label-header mb-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                 <CollapsibleTrigger>
                   Labels
-                  {onManageLabels && (
+                  {onAddLabel && (
                     <div
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        onManageLabels();
+                        onAddLabel();
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.stopPropagation();
                           e.preventDefault();
-                          onManageLabels();
+                          onAddLabel();
                         }
                       }}
-                      title="Manage labels"
+                      title="Add label"
                       className="ml-auto flex size-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-sidebar-foreground/10 group-hover/label-header:opacity-100"
                     >
-                      <Settings className="size-3" />
+                      <Plus className="size-3.5" />
                     </div>
                   )}
-                  <ChevronDown className={cn("size-4 transition-transform group-data-[state=open]/labels:rotate-180", onManageLabels ? "" : "ml-auto")} />
+                  <ChevronDown className={cn("size-4 transition-transform group-data-[state=open]/labels:rotate-180", onAddLabel ? "" : "ml-auto")} />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <CollapsibleContent>
@@ -187,7 +187,7 @@ export function AppSidebar({
                     {labels.map((label) => {
                       const colors = getLabelColor(label.color);
                       return (
-                        <SidebarMenuItem key={label.id}>
+                        <SidebarMenuItem key={label.id} className="group/label-item">
                           <SidebarMenuButton
                             tooltip={label.name}
                             isActive={activeFolder === `label:${label.id}`}
@@ -196,21 +196,23 @@ export function AppSidebar({
                             <span className={`size-2 rounded-full shrink-0 ${colors.dot}`} />
                             <span>{label.name}</span>
                           </SidebarMenuButton>
+                          {onEditLabel && (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => onEditLabel(label)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") onEditLabel(label);
+                              }}
+                              title="Edit label"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded opacity-0 transition-opacity hover:bg-sidebar-foreground/10 group-hover/label-item:opacity-100"
+                            >
+                              <Pencil className="size-2.5 text-sidebar-foreground/70" />
+                            </div>
+                          )}
                         </SidebarMenuItem>
                       );
                     })}
-                    {onCreateLabel && (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          tooltip="Create label"
-                          onClick={onCreateLabel}
-                          className="text-muted-foreground"
-                        >
-                          <Plus className="size-3.5" />
-                          <span>Add label</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </CollapsibleContent>

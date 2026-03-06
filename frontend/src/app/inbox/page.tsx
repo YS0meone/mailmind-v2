@@ -15,14 +15,14 @@ import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
 import { ComposeWindow } from "@/components/inbox/compose-window";
-import { LabelManagerDialog } from "@/components/inbox/label-manager-dialog";
+import { LabelEditDialog } from "@/components/inbox/label-edit-dialog";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import type { Thread, ThreadDetail, Draft } from "@/types/email";
+import type { Thread, ThreadDetail, Draft, Label } from "@/types/email";
 
 export default function InboxPage() {
   const {
@@ -57,7 +57,8 @@ export default function InboxPage() {
   const { labels, createLabel, updateLabel, deleteLabel } = useLabels();
 
   const [composeOpen, setComposeOpen] = useState(false);
-  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
@@ -206,7 +207,14 @@ export default function InboxPage() {
           setComposeOpen(true);
         }}
         onFolderChange={setActiveFolder}
-        onManageLabels={() => setLabelManagerOpen(true)}
+        onAddLabel={() => {
+          setEditingLabel(null);
+          setLabelDialogOpen(true);
+        }}
+        onEditLabel={(label) => {
+          setEditingLabel(label);
+          setLabelDialogOpen(true);
+        }}
       />
       <SidebarInset className="overflow-hidden">
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
@@ -270,13 +278,13 @@ export default function InboxPage() {
         onDraftDeleted={handleDraftDeleted}
       />
 
-      <LabelManagerDialog
-        open={labelManagerOpen}
-        onOpenChange={setLabelManagerOpen}
-        labels={labels}
-        onUpdate={updateLabel}
-        onDelete={deleteLabel}
+      <LabelEditDialog
+        open={labelDialogOpen}
+        onOpenChange={setLabelDialogOpen}
+        label={editingLabel}
+        onSave={updateLabel}
         onCreate={createLabel}
+        onDelete={deleteLabel}
       />
     </SidebarProvider>
   );

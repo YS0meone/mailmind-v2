@@ -28,12 +28,14 @@ class LabelCreateRequest(BaseModel):
     name: str
     color: str
     description: str | None = None
+    rules: dict | None = None
 
 
 class LabelUpdateRequest(BaseModel):
     name: str | None = None
     color: str | None = None
     description: str | None = None
+    rules: dict | None = None
     position: int | None = None
 
 

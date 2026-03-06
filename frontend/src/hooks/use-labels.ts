@@ -25,7 +25,7 @@ export function useLabels() {
   }, [fetchLabels]);
 
   const createLabel = useCallback(
-    async (payload: { name: string; color: string; description?: string }) => {
+    async (payload: { name: string; color: string; description?: string; rules?: Record<string, unknown> | null }) => {
       const label = await apiCreateLabel(payload);
       setLabels((prev) => [...prev, label]);
       return label as Label;
@@ -36,7 +36,7 @@ export function useLabels() {
   const updateLabel = useCallback(
     async (
       id: string,
-      payload: { name?: string; color?: string; description?: string; position?: number }
+      payload: { name?: string; color?: string; description?: string; rules?: Record<string, unknown> | null; position?: number }
     ) => {
       const updated = await apiUpdateLabel(id, payload);
       setLabels((prev) => prev.map((l) => (l.id === id ? updated : l)));
