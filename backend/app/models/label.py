@@ -45,6 +45,7 @@ class ThreadLabel(Base):
     label_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("labels.id", ondelete="CASCADE"), primary_key=True
     )
+    source: Mapped[str] = mapped_column(String(10), server_default="human", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

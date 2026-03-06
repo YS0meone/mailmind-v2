@@ -18,6 +18,11 @@ dependencies = [
     "cryptography>=43.0.0",
     "pyjwt>=2.11.0",
     "fastapi-cli>=0.0.24",
+    "langgraph>=1.0.10",
+    "langgraph-checkpoint-postgres>=3.0.4",
+    "langchain>=0.3.0",
+    "langchain-openai>=1.1.10",
+    "qdrant-client>=1.17.0",
 ]
 
 [project.optional-dependencies]

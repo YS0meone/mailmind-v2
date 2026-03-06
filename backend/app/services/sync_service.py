@@ -1,5 +1,6 @@
 """Sync service — upserts Nylas messages/threads into PostgreSQL."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -7,10 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.db.database import async_session
 from app.models.email import Email
 from app.models.email_account import EmailAccount
 from app.models.thread import Thread
 from app.services import nylas_service
+from app.services.triage_service import run_triage
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +146,7 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
 
     total_messages = 0
     page_token = None
+    new_thread_ids: list[tuple] = []
 
     try:
         # Fetch messages in bulk with date filter
@@ -183,6 +187,7 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                         )
                         db.add(thread)
                         await db.flush()
+                        new_thread_ids.append((thread.id, account.id))
                     else:
                         # Update thread timestamp if this message is newer
                         msg_date = _unix_to_dt(nylas_msg.get("date"))
@@ -237,6 +242,15 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
 
         account.last_sync_at = datetime.now(timezone.utc)
         await db.commit()
+
+        if new_thread_ids:
+            async def _triage_one(tid, aid):
+                async with async_session() as triage_db:
+                    await run_triage(tid, aid, triage_db)
+
+            for tid, aid in new_thread_ids:
+                asyncio.create_task(_triage_one(tid, aid))
+            logger.info("Queued triage for %d new threads", len(new_thread_ids))
 
         _sync_status[account_key] = {"status": "done", "messages": total_messages}
         logger.info("Synced %d messages for %s", total_messages, account.email_address)

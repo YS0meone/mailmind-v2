@@ -190,7 +190,7 @@ async def set_thread_labels(
     )
 
     for label_id in body.label_ids:
-        db.add(ThreadLabel(thread_id=thread_id, label_id=label_id))
+        db.add(ThreadLabel(thread_id=thread_id, label_id=label_id, source="human"))
 
     await db.commit()
 
