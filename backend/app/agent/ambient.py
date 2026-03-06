@@ -1,17 +1,16 @@
 """Ambient agent — inspects incoming emails and generates action proposals.
 
-Graph shape:  START → triage_node → decide_node → END
+Graph shape:  START → decide_node → END
 
-- triage_node  : mandatory, always runs, reuses the existing triage graph to
-                 classify labels and apply them.  Adds a "triage" proposal.
 - decide_node  : single LLM call with bound tools.  The model decides which
-                 optional proposals (notify / draft_reply / flag_urgent) are
-                 warranted and returns all tool calls in one shot.  Tools are
-                 pure functions — no IO, no side-effects.  Side-effects (label
-                 writes, draft creation) happen *after* the graph returns.
+                 proposals (notify / draft_reply / flag_urgent) are warranted
+                 and returns all tool calls in one shot.  Tools are pure
+                 functions — no IO, no side-effects.  Side-effects (draft
+                 creation, notification push) happen *after* the graph returns.
+
+Triage runs independently in a separate background task.
 """
 
-import functools
 import logging
 import operator
 import uuid
@@ -23,7 +22,6 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.triage import run_triage_graph
 from app.config import settings
 from app.models.email import Email
 from app.models.thread import Thread
@@ -36,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class Proposal(TypedDict):
-    type: Literal["triage", "notify", "draft_reply", "flag_urgent"]
+    type: Literal["notify", "draft_reply", "flag_urgent"]
     payload: dict
 
 
@@ -49,9 +47,7 @@ class AmbientState(TypedDict):
     body_preview: str | None
     from_email: str | None
     from_name: str | None
-    # Written by triage_node, read by decide_node for prompt context
-    triage_label_ids: list[str]
-    # Output — Annotated[list, operator.add] allows both nodes to append safely
+    # Output — Annotated[list, operator.add] for safe accumulation
     proposals: Annotated[list[Proposal], operator.add]
 
 
@@ -92,9 +88,9 @@ _TOOL_MAP = {t.name: t for t in _OPTIONAL_TOOLS}
 # ---------------------------------------------------------------------------
 
 _DECIDE_SYSTEM_PROMPT = (
-    "You are an ambient email assistant reviewing an incoming email that has just been triaged.\n"
-    "Decide whether any additional actions are warranted by calling the appropriate tools.\n"
-    "You may call zero, one, or several tools — but never call the same tool more than once.\n\n"
+    "You are an ambient email assistant reviewing an incoming email.\n"
+    "Decide whether any actions are warranted by calling the appropriate tools.\n"
+    "You may call zero, one, or several tools — but never call the same tool twice.\n\n"
     "Tool guidance:\n"
     "  notify_tool      — email is notable and the user should be made aware\n"
     "  draft_reply_tool — a reply is clearly expected from the user\n"
@@ -115,22 +111,6 @@ _decide_llm = init_chat_model(
 # Nodes
 # ---------------------------------------------------------------------------
 
-async def triage_node(state: AmbientState, *, db: AsyncSession) -> dict:
-    """Mandatory first step: classify labels and apply them via the triage graph."""
-    assigned = await run_triage_graph(
-        thread_id=uuid.UUID(state["thread_id"]),
-        account_id=uuid.UUID(state["account_id"]),
-        subject=state["subject"],
-        snippet=state["snippet"],
-        db=db,
-    )
-    proposal: Proposal = {
-        "type": "triage",
-        "payload": {"assigned_label_ids": assigned},
-    }
-    return {"triage_label_ids": assigned, "proposals": [proposal]}
-
-
 async def decide_node(state: AmbientState) -> dict:
     """Single LLM call: decide which optional proposals to generate."""
     parts: list[str] = []
@@ -143,9 +123,6 @@ async def decide_node(state: AmbientState) -> dict:
         parts.append(f'Snippet: "{state["snippet"]}"')
     if state.get("body_preview"):
         parts.append(f"Body preview:\n{state['body_preview']}")
-    if state.get("triage_label_ids"):
-        parts.append(f"Triage assigned label IDs: {state['triage_label_ids']}")
-
     human_msg = "\n".join(parts) if parts else "No email context available."
 
     response = await _decide_llm.ainvoke([
@@ -172,12 +149,10 @@ async def decide_node(state: AmbientState) -> dict:
 # Graph
 # ---------------------------------------------------------------------------
 
-def build_ambient_graph(db: AsyncSession):
+def build_ambient_graph():
     builder = StateGraph(AmbientState)
-    builder.add_node("triage", functools.partial(triage_node, db=db))
     builder.add_node("decide", decide_node)
-    builder.add_edge(START, "triage")
-    builder.add_edge("triage", "decide")
+    builder.add_edge(START, "decide")
     builder.add_edge("decide", END)
     return builder.compile()
 
@@ -193,9 +168,8 @@ async def run_ambient_agent(
 ) -> list[Proposal]:
     """Run the ambient agent on an incoming thread.
 
-    Returns all generated proposals.  Label assignments (from triage) are
-    committed to the DB here, after the graph completes.  All other proposal
-    side-effects (draft creation, SSE push) are the caller's responsibility.
+    Returns generated proposals.  The caller is responsible for persisting
+    them to the database and pushing notifications.
     """
     thread = (await db.execute(
         select(Thread).where(Thread.id == thread_id)
@@ -212,7 +186,7 @@ async def run_ambient_agent(
         .limit(1)
     )).scalar_one_or_none()
 
-    graph = build_ambient_graph(db)
+    graph = build_ambient_graph()
     final = await graph.ainvoke({
         "thread_id": str(thread_id),
         "account_id": str(account_id),
@@ -221,11 +195,9 @@ async def run_ambient_agent(
         "body_preview": (email.snippet or "")[:500] if email else None,
         "from_email": email.from_email if email else None,
         "from_name": email.from_name if email else None,
-        "triage_label_ids": [],
         "proposals": [],
     })
 
-    await db.commit()  # persists label assignments written by triage_node
     proposals = final.get("proposals", [])
     logger.info(
         "Ambient agent completed for thread %s — %d proposal(s): %s",

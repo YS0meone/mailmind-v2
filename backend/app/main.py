@@ -5,7 +5,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import agent, auth, contacts, drafts, emails, labels, sync, threads, webhooks
+from app.api.routes import (
+    agent,
+    auth,
+    contacts,
+    drafts,
+    emails,
+    labels,
+    proposals,
+    sync,
+    threads,
+    webhooks,
+)
 from app.config import settings
 
 # Configure logging — all app loggers print to stdout
@@ -46,6 +57,7 @@ app.include_router(threads.router, prefix="/api/v1")
 app.include_router(emails.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
+app.include_router(proposals.router, prefix="/api/v1")
 app.include_router(agent.router, prefix="/api/v1")
 
 

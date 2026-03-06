@@ -8,11 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.agent.ambient import run_ambient_agent
 from app.db.database import async_session
 from app.models.email import Email
 from app.models.email_account import EmailAccount
 from app.models.thread import Thread
 from app.services import nylas_service
+from app.services.proposal_service import persist_proposals
 from app.services.triage_service import run_triage
 
 logger = logging.getLogger(__name__)
@@ -248,9 +250,28 @@ async def sync_account(db: AsyncSession, account: EmailAccount, days: int = 2) -
                 async with async_session() as triage_db:
                     await run_triage(tid, aid, triage_db)
 
+            async def _run_ambient(tid, aid):
+                try:
+                    async with async_session() as ambient_db:
+                        proposals = await run_ambient_agent(
+                            tid, aid, ambient_db,
+                        )
+                        if proposals:
+                            await persist_proposals(
+                                proposals, tid, aid, ambient_db,
+                            )
+                except Exception:
+                    logger.exception(
+                        "Ambient agent failed for thread %s", tid,
+                    )
+
             for tid, aid in new_thread_ids:
                 asyncio.create_task(_triage_one(tid, aid))
-            logger.info("Queued triage for %d new threads", len(new_thread_ids))
+                asyncio.create_task(_run_ambient(tid, aid))
+            logger.info(
+                "Queued triage + ambient for %d new threads",
+                len(new_thread_ids),
+            )
 
         _sync_status[account_key] = {"status": "done", "messages": total_messages}
         logger.info("Synced %d messages for %s", total_messages, account.email_address)
