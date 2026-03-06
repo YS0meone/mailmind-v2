@@ -13,8 +13,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Minus, X, Send, Trash2 } from "lucide-react";
+import { Minus, X, Send, Trash2, Sparkles } from "lucide-react";
 import { RecipientInput } from "./recipient-input";
+import { AiComposeModal } from "./ai-compose-modal";
 import type { Participant, Draft } from "@/types/email";
 
 interface ComposeWindowProps {
@@ -35,6 +36,7 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
   const [minimized, setMinimized] = useState(false);
   const [showCc, setShowCc] = useState((draft?.cc_list?.length ?? 0) > 0);
   const [showBcc, setShowBcc] = useState((draft?.bcc_list?.length ?? 0) > 0);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const { draftId, saveStatus, scheduleSave, discard } = useDraftAutosave({
     initialDraftId: draft?.id,
@@ -270,12 +272,26 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
           </div>
 
           {/* Body */}
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your message..."
-            className="min-h-0 flex-1 resize-none border-0 shadow-none focus-visible:ring-0"
-          />
+          <div className="relative min-h-0 flex-1">
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey && e.key === "m") {
+                  e.preventDefault();
+                  setAiModalOpen(true);
+                }
+              }}
+              placeholder="Write your message... (Ctrl+M for AI)"
+              className="h-full min-h-0 resize-none border-0 shadow-none focus-visible:ring-0"
+            />
+            <AiComposeModal
+              open={aiModalOpen}
+              onClose={() => setAiModalOpen(false)}
+              onAccept={(text) => setBody(text)}
+              threadSubject={subject || null}
+            />
+          </div>
 
           {/* Footer */}
           <Separator />
@@ -290,6 +306,19 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
                 <Send className="size-3.5" />
                 {sending ? "Sending..." : "Send"}
               </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setAiModalOpen(true)}
+                  >
+                    <Sparkles className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">AI Compose (Ctrl+M)</TooltipContent>
+              </Tooltip>
               {saveStatus !== "idle" && (
                 <span className="text-[11px] text-muted-foreground/70">
                   {saveStatus === "saving" ? "Saving..." : "Draft saved"}

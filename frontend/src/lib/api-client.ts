@@ -231,6 +231,70 @@ export async function setThreadLabels(threadId: string, labelIds: string[]) {
   });
 }
 
+// --- AI Compose ---
+
+export function streamCompose(
+  body: {
+    instruction: string;
+    thread_subject?: string;
+    thread_snippet?: string;
+    sender_name?: string;
+  },
+  onToken: (text: string) => void,
+  onDone: (fullText: string) => void,
+  onError: (err: string) => void,
+): AbortController {
+  const controller = new AbortController();
+  const token = getToken();
+
+  fetch(`${BACKEND_URL}/api/v1/agent/compose`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        onError(err.detail || "Compose request failed");
+        return;
+      }
+      const reader = res.body?.getReader();
+      if (!reader) {
+        onError("No response stream");
+        return;
+      }
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        let eventType = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+            if (eventType === "token") onToken(data.content);
+            else if (eventType === "done") onDone(data.full_text);
+            else if (eventType === "error") onError(data.detail);
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") onError(err.message);
+    });
+
+  return controller;
+}
+
 // --- Sync ---
 
 export async function triggerSync() {

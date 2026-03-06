@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Reply, ReplyAll, Forward, Send, Trash2, X, ChevronDown } from "lucide-react";
+import { Reply, ReplyAll, Forward, Send, Trash2, X, ChevronDown, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { formatDate } from "@/lib/format";
 import { sendEmail } from "@/lib/api-client";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { RecipientInput } from "./recipient-input";
+import { AiComposeModal } from "./ai-compose-modal";
 import type { Participant, EmailMessage as EmailMessageType, Draft } from "@/types/email";
 
 interface EmailMessageProps {
@@ -200,6 +201,7 @@ function InlineReplyBox({
   const [body, setBody] = useState(initialDraft?.body ?? "");
   const [showQuote, setShowQuote] = useState(false);
   const [sending, setSending] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const quotedHeader = buildQuotedHeader(email);
   const quotedSnippet = email.snippet || "";
@@ -328,13 +330,29 @@ function InlineReplyBox({
       )}
 
       {/* Body */}
-      <Textarea
-        ref={textareaRef}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder={mode === "forward" ? "Add a message..." : "Write your reply..."}
-        className="min-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0"
-      />
+      <div className="relative">
+        <Textarea
+          ref={textareaRef}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.ctrlKey && e.key === "m") {
+              e.preventDefault();
+              setAiModalOpen(true);
+            }
+          }}
+          placeholder={mode === "forward" ? "Add a message..." : "Write your reply... (Ctrl+M for AI)"}
+          className="min-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0"
+        />
+        <AiComposeModal
+          open={aiModalOpen}
+          onClose={() => setAiModalOpen(false)}
+          onAccept={(text) => setBody(text)}
+          threadSubject={threadSubject}
+          threadSnippet={email.snippet}
+          senderName={email.from_name || email.from_email}
+        />
+      </div>
 
       {/* Collapsed quoted text */}
       <div className="px-3 pb-2">
@@ -366,6 +384,15 @@ function InlineReplyBox({
           >
             <Send className="size-3.5" />
             {sending ? "Sending..." : "Send"}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            title="AI Compose (Ctrl+M)"
+            onClick={() => setAiModalOpen(true)}
+          >
+            <Sparkles className="size-3.5" />
           </Button>
           {saveStatus !== "idle" && (
             <span className="text-[11px] text-muted-foreground/70">

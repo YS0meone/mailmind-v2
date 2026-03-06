@@ -1,17 +1,23 @@
-"""Agent routes — manual triage trigger."""
+"""Agent routes — triage trigger and AI compose streaming."""
 
+import json
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.compose import ComposeState, stream_compose
 from app.api.deps import get_current_user
 from app.db.database import async_session
 from app.models.email_account import EmailAccount
 from app.models.thread import Thread
 from app.models.user import User
 from app.services.triage_service import run_triage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["agent"])
 
@@ -38,3 +44,46 @@ async def triage_thread(
         assigned = await run_triage(thread_id, thread.account_id, db)
 
     return {"thread_id": str(thread_id), "assigned_label_ids": assigned}
+
+
+class ComposeRequest(BaseModel):
+    instruction: str
+    thread_subject: str | None = None
+    thread_snippet: str | None = None
+    sender_name: str | None = None
+
+
+@router.post("/agent/compose")
+async def compose_email(
+    body: ComposeRequest,
+    user: User = Depends(get_current_user),
+):
+    """Stream AI-generated email body via SSE."""
+
+    state: ComposeState = {
+        "instruction": body.instruction,
+        "thread_subject": body.thread_subject,
+        "thread_snippet": body.thread_snippet,
+        "sender_name": body.sender_name,
+        "generated_body": "",
+    }
+
+    async def event_stream():
+        full_text = ""
+        try:
+            async for chunk in stream_compose(state):
+                full_text += chunk
+                yield f"event: token\ndata: {json.dumps({'content': chunk})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'full_text': full_text})}\n\n"
+        except Exception as e:
+            logger.exception("Compose streaming failed")
+            yield f"event: error\ndata: {json.dumps({'detail': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
