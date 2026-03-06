@@ -120,7 +120,7 @@ export function AgentInboxDialog({ open, onOpenChange }: AgentInboxDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[70vh] flex flex-col gap-0 p-0 [&>button]:top-5 [&>button]:right-5">
+      <DialogContent className="max-w-6xl sm:max-w-6xl h-[70vh] flex flex-col gap-0 p-0 [&>button]:top-5 [&>button]:right-5">
         {/* Header */}
         <DialogHeader className="shrink-0 px-6 pt-6 pb-5">
           <DialogTitle className="text-xl font-semibold">Agent Inbox</DialogTitle>
