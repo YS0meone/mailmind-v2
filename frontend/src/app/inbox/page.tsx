@@ -233,7 +233,7 @@ export default function InboxPage() {
                 onSelectThread={(threadId) => {
                   selectThreadById(threadId);
                   const panel = detailPanelRef.current;
-                  if (panel?.isCollapsed()) panel.resize(60);
+                  if (panel?.isCollapsed()) panel.resize("60%");
                 }}
               />
             ) : (
