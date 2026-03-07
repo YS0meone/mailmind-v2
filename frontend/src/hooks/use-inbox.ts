@@ -176,6 +176,8 @@ export function useInbox() {
     try {
       const detail = await getThread(threadId);
       setSelectedThread(detail);
+      // Mark as read (idempotent — safe even if already read)
+      markThreadRead(threadId).catch(() => {});
     } catch {
       setSelectedThread(null);
     } finally {
