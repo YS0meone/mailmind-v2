@@ -24,9 +24,10 @@ interface ComposeWindowProps {
   onSent?: () => void;
   draft?: Draft | null;
   onDraftDeleted?: () => void;
+  prefill?: { to?: Participant[]; subject?: string; body?: string } | null;
 }
 
-export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDeleted }: ComposeWindowProps) {
+export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDeleted, prefill }: ComposeWindowProps) {
   const [to, setTo] = useState<Participant[]>(draft?.to_list ?? []);
   const [cc, setCc] = useState<Participant[]>(draft?.cc_list ?? []);
   const [bcc, setBcc] = useState<Participant[]>(draft?.bcc_list ?? []);
@@ -42,6 +43,14 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
     initialDraftId: draft?.id,
     mode: "compose",
   });
+
+  // When prefill changes (e.g. opening compose from an AI proposal), seed the fields
+  useEffect(() => {
+    if (!prefill) return;
+    setTo(prefill.to ?? []);
+    setSubject(prefill.subject ?? "");
+    setBody(prefill.body ?? "");
+  }, [prefill]);
 
   // Re-initialize state when draft prop changes (opening a different draft)
   const prevDraftIdRef = useRef(draft?.id);

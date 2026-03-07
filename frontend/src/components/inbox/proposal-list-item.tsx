@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, FileEdit } from "lucide-react";
+import { Sparkles, FileEdit, CornerDownLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ interface ProposalListItemProps {
 }
 
 const TYPE_ACCEPT_LABEL: Record<string, string> = {
-  draft_reply: "Open Thread",
+  draft_reply: "Open Draft",
 };
 
 export function ProposalListItem({
@@ -29,6 +29,7 @@ export function ProposalListItem({
   const senderName = (payload.thread_sender_name as string) || (payload.thread_sender_email as string) || "Unknown";
   const subject = (payload.thread_subject as string) || "(no subject)";
   const reason = (payload.reason as string) || "";
+  const draft = (payload.draft as string) || "";
   const acceptLabel = TYPE_ACCEPT_LABEL[proposal.type] ?? "Accept";
 
   return (
@@ -55,14 +56,48 @@ export function ProposalListItem({
         </span>
       </div>
 
-      {/* Row 2: AI reason + action buttons */}
-      <div className="mt-1.5 ml-[22px] flex items-center gap-2">
+      {/* Row 2: AI reason */}
+      <div className="mt-1 ml-[22px] flex items-center gap-2">
         <Sparkles className="size-3 text-primary shrink-0 opacity-70" />
         <span className="flex-1 truncate text-xs text-muted-foreground">
           {reason}
         </span>
+      </div>
+
+      {/* Row 3: Draft preview + action buttons */}
+      {draft && (
+        <div className="mt-1 ml-[22px] flex items-center gap-2">
+          <CornerDownLeft className="size-3 text-muted-foreground/50 shrink-0" />
+          <span className="flex-1 truncate text-xs text-muted-foreground/70 italic">
+            {draft}
+          </span>
+          <div
+            className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2.5 text-xs gap-1"
+              onClick={onAccept}
+            >
+              <FileEdit className="size-3" />
+              {acceptLabel}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onDismiss}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+      {!draft && (
         <div
-          className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="mt-1 ml-[22px] flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
           <Button
@@ -83,7 +118,7 @@ export function ProposalListItem({
             Dismiss
           </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

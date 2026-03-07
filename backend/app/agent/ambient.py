@@ -67,10 +67,18 @@ def notify_tool(
 @tool
 def draft_reply_tool(
     reason: str,
+    draft_content: str,
     tone: Literal["professional", "casual", "formal"] = "professional",
 ) -> Proposal:
-    """Propose drafting a reply when a response is clearly expected."""
-    return {"type": "draft_reply", "payload": {"reason": reason, "tone": tone}}
+    """Propose drafting a reply when a response is clearly expected.
+
+    Write a complete, ready-to-send reply in draft_content based on the email context.
+    The draft should be polite, concise, and match the requested tone.
+    """
+    return {
+        "type": "draft_reply",
+        "payload": {"reason": reason, "tone": tone, "draft": draft_content},
+    }
 
 
 @tool
@@ -93,7 +101,8 @@ _DECIDE_SYSTEM_PROMPT = (
     "You may call zero, one, or several tools — but never call the same tool twice.\n\n"
     "Tool guidance:\n"
     "  notify_tool      — email is notable and the user should be made aware\n"
-    "  draft_reply_tool — a reply is clearly expected from the user\n"
+    "  draft_reply_tool — a reply is clearly expected; write a complete ready-to-send"
+    " draft in draft_content\n"
     "  flag_urgent_tool — requires the user's immediate attention\n\n"
     "Default to doing nothing. Newsletters, automated alerts, and low-signal "
     "emails should be silently ignored."

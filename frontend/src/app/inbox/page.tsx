@@ -25,7 +25,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import type { Thread, ThreadDetail, Draft, Label } from "@/types/email";
+import type { Thread, ThreadDetail, Draft, Label, Participant } from "@/types/email";
 
 export default function InboxPage() {
   const {
@@ -66,6 +66,7 @@ export default function InboxPage() {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
+  const [composePrefill, setComposePrefill] = useState<{ to?: Participant[]; subject?: string; body?: string } | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
   const handleLabelsChange = useCallback(
@@ -210,6 +211,7 @@ export default function InboxPage() {
         onSignOut={handleSignOut}
         onCompose={() => {
           setEditingDraft(null);
+          setComposePrefill(null);
           setComposeOpen(true);
         }}
         onFolderChange={setActiveFolder}
@@ -234,6 +236,19 @@ export default function InboxPage() {
                   selectThreadById(threadId);
                   const panel = detailPanelRef.current;
                   if (panel?.isCollapsed()) panel.resize("60%");
+                }}
+                onOpenDraft={(payload) => {
+                  const senderEmail = payload.thread_sender_email as string;
+                  const senderName = payload.thread_sender_name as string;
+                  const subject = payload.thread_subject as string;
+                  const draft = payload.draft as string;
+                  setEditingDraft(null);
+                  setComposePrefill({
+                    to: senderEmail ? [{ name: senderName || senderEmail, email: senderEmail }] : [],
+                    subject: subject ? (subject.startsWith("Re:") ? subject : `Re: ${subject}`) : "",
+                    body: draft,
+                  });
+                  setComposeOpen(true);
                 }}
               />
             ) : (
@@ -297,6 +312,7 @@ export default function InboxPage() {
         }}
         draft={editingDraft}
         onDraftDeleted={handleDraftDeleted}
+        prefill={composePrefill}
       />
 
       <LabelEditDialog

@@ -13,9 +13,10 @@ const PROPOSAL_TYPES = [
 interface AgentInboxViewProps {
   selectedId: string | null;
   onSelectThread: (threadId: string) => void;
+  onOpenDraft: (payload: Record<string, unknown>) => void;
 }
 
-export function AgentInboxView({ selectedId, onSelectThread }: AgentInboxViewProps) {
+export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: AgentInboxViewProps) {
   const [activeType, setActiveType] = useState<string>(PROPOSAL_TYPES[0].value);
 
   const { proposals, loading, updateStatus } = useProposals({
@@ -25,9 +26,13 @@ export function AgentInboxView({ selectedId, onSelectThread }: AgentInboxViewPro
     perPage: 50,
   });
 
-  const handleAccept = async (proposalId: string, threadId: string | null) => {
+  const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>) => {
     await updateStatus(proposalId, "accepted");
-    if (threadId) onSelectThread(threadId);
+    if (payload.draft) {
+      onOpenDraft(payload);
+    } else if (threadId) {
+      onSelectThread(threadId);
+    }
   };
 
   const handleDismiss = async (proposalId: string) => {
@@ -73,7 +78,7 @@ export function AgentInboxView({ selectedId, onSelectThread }: AgentInboxViewPro
               proposal={p}
               isSelected={!!p.thread_id && p.thread_id === selectedId}
               onSelect={() => p.thread_id && onSelectThread(p.thread_id)}
-              onAccept={() => handleAccept(p.id, p.thread_id)}
+              onAccept={() => handleAccept(p.id, p.thread_id, p.payload)}
               onDismiss={() => handleDismiss(p.id)}
             />
           ))
