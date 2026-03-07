@@ -17,7 +17,7 @@ import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
 import { ComposeWindow } from "@/components/inbox/compose-window";
 import { AiChatPanel } from "@/components/inbox/ai-chat-panel";
-import { AgentInboxDialog } from "@/components/inbox/agent-inbox-dialog";
+import { AgentInboxView } from "@/components/inbox/agent-inbox-view";
 import { LabelEditDialog } from "@/components/inbox/label-edit-dialog";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
@@ -42,6 +42,7 @@ export default function InboxPage() {
     drafts,
     setActiveFolder,
     setSearchQuery,
+    selectThreadById,
     handleSelectThread,
     handleStar,
     handleToggleRead,
@@ -62,7 +63,6 @@ export default function InboxPage() {
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [agentInboxOpen, setAgentInboxOpen] = useState(false);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
@@ -222,34 +222,44 @@ export default function InboxPage() {
           setLabelDialogOpen(true);
         }}
         onAskAI={() => setChatOpen(true)}
-        onAgentInbox={() => setAgentInboxOpen(true)}
         pendingProposalCount={pendingCount}
       />
       <SidebarInset className="overflow-hidden">
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
           <ResizablePanel defaultSize={100} minSize={25}>
-            <ThreadList
-              threads={threads}
-              loading={loading}
-              loadingMore={loadingMore}
-              hasMore={hasMore}
-              selectedId={selectedId}
-              activeFolder={activeFolder}
-              searchQuery={searchQuery}
-              labels={labels}
-              onSearch={setSearchQuery}
-              onSelect={onSelectThread}
-              onStar={handleStar}
-              onToggleRead={handleToggleRead}
-              onDelete={handleDeleteInDrafts}
-              onRefresh={handleRefresh}
-              onLoadMore={handleLoadMore}
-              onBulkStar={handleBulkStar}
-              onBulkRead={handleBulkRead}
-              onBulkDelete={handleBulkDelete}
-              onBulkLabel={handleBulkLabel}
-              onCreateLabel={createLabel}
-            />
+            {activeFolder === "agent_inbox" ? (
+              <AgentInboxView
+                selectedId={selectedId}
+                onSelectThread={(threadId) => {
+                  selectThreadById(threadId);
+                  const panel = detailPanelRef.current;
+                  if (panel?.isCollapsed()) panel.resize(60);
+                }}
+              />
+            ) : (
+              <ThreadList
+                threads={threads}
+                loading={loading}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                selectedId={selectedId}
+                activeFolder={activeFolder}
+                searchQuery={searchQuery}
+                labels={labels}
+                onSearch={setSearchQuery}
+                onSelect={onSelectThread}
+                onStar={handleStar}
+                onToggleRead={handleToggleRead}
+                onDelete={handleDeleteInDrafts}
+                onRefresh={handleRefresh}
+                onLoadMore={handleLoadMore}
+                onBulkStar={handleBulkStar}
+                onBulkRead={handleBulkRead}
+                onBulkDelete={handleBulkDelete}
+                onBulkLabel={handleBulkLabel}
+                onCreateLabel={createLabel}
+              />
+            )}
           </ResizablePanel>
 
           <ResizableHandle />
@@ -288,8 +298,6 @@ export default function InboxPage() {
         draft={editingDraft}
         onDraftDeleted={handleDraftDeleted}
       />
-
-      <AgentInboxDialog open={agentInboxOpen} onOpenChange={setAgentInboxOpen} />
 
       <LabelEditDialog
         open={labelDialogOpen}

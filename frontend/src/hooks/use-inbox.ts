@@ -84,6 +84,14 @@ export function useInbox() {
   useEffect(() => {
     if (!isAuthenticated()) return;
 
+    // Agent inbox: no thread fetching — handled by AgentInboxView
+    if (activeFolder === "agent_inbox") {
+      setThreads([]);
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
+
     // Drafts folder: fetch drafts instead of threads
     if (activeFolder === "drafts") {
       setLoading(true);
@@ -158,6 +166,19 @@ export function useInbox() {
       .catch(() => {})
       .finally(() => setLoadingMore(false));
   }, [loadingMore, hasMore, threads, activeFolder, searchQuery]);
+
+  const selectThreadById = useCallback(async (threadId: string) => {
+    setSelectedId(threadId);
+    setDetailLoading(true);
+    try {
+      const detail = await getThread(threadId);
+      setSelectedThread(detail);
+    } catch {
+      setSelectedThread(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
 
   const handleSelectThread = useCallback(async (thread: Thread) => {
     setSelectedId(thread.id);
@@ -348,6 +369,7 @@ export function useInbox() {
     drafts,
     setActiveFolder,
     setSearchQuery,
+    selectThreadById,
     handleSelectThread,
     handleStar,
     handleToggleRead,

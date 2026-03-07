@@ -57,7 +57,6 @@ interface SidebarProps {
   onAddLabel?: () => void;
   onEditLabel?: (label: Label) => void;
   onAskAI?: () => void;
-  onAgentInbox?: () => void;
   pendingProposalCount?: number;
 }
 
@@ -79,7 +78,6 @@ export function AppSidebar({
   onAddLabel,
   onEditLabel,
   onAskAI,
-  onAgentInbox,
   pendingProposalCount = 0,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
@@ -244,7 +242,11 @@ export function AppSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Agent Inbox" onClick={onAgentInbox}>
+                    <SidebarMenuButton
+                      tooltip="Agent Inbox"
+                      isActive={activeFolder === "agent_inbox"}
+                      onClick={() => onFolderChange("agent_inbox")}
+                    >
                       <Sparkles />
                       <span>Agent Inbox</span>
                       {pendingProposalCount > 0 && (
