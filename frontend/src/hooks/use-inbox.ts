@@ -175,9 +175,10 @@ export function useInbox() {
     setDetailLoading(true);
     try {
       const detail = await getThread(threadId);
-      setSelectedThread(detail);
-      // Mark as read (idempotent — safe even if already read)
-      markThreadRead(threadId).catch(() => {});
+      setSelectedThread({ ...detail, is_unread: false });
+      if (detail.is_unread) {
+        markThreadRead(threadId).catch(() => {});
+      }
     } catch {
       setSelectedThread(null);
     } finally {
