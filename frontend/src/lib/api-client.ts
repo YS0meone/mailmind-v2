@@ -302,6 +302,7 @@ export function streamChat(
   onToken: (text: string) => void,
   onDone: (fullText: string) => void,
   onError: (err: string) => void,
+  onCustom?: (name: string, data: unknown) => void,
 ): AbortController {
   const controller = new AbortController();
   const token = getToken();
@@ -343,6 +344,7 @@ export function streamChat(
             if (eventType === "token") onToken(data.content);
             else if (eventType === "done") onDone(data.full_text);
             else if (eventType === "error") onError(data.detail);
+            else if (eventType === "custom" && onCustom) onCustom(data.name, data.data);
           }
         }
       }

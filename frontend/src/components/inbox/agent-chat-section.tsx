@@ -11,7 +11,12 @@ interface ChatMessage {
   content: string;
 }
 
-export function AgentChatSection() {
+interface AgentChatSectionProps {
+  onCustomEvent?: (name: string, data: unknown) => void;
+  onNewChat?: () => void;
+}
+
+export function AgentChatSection({ onCustomEvent, onNewChat }: AgentChatSectionProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -69,17 +74,21 @@ export function AgentChatSection() {
         });
         setStreaming(false);
       },
+      (name, data) => {
+        onCustomEvent?.(name, data);
+      },
     );
 
     abortRef.current = controller;
-  }, [input, streaming, messages]);
+  }, [input, streaming, messages, onCustomEvent]);
 
   const handleNewChat = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();
     setMessages([]);
     setInput("");
     setStreaming(false);
-  }, []);
+    onNewChat?.();
+  }, [onNewChat]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

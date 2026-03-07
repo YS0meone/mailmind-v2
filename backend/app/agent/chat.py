@@ -3,8 +3,10 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import Any
 
 from langchain.chat_models import init_chat_model
+from langchain_core.callbacks import dispatch_custom_event
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from sqlalchemy import Text, func, or_, select, text
@@ -25,6 +27,34 @@ SYSTEM_PROMPT = (
     "If no results are found, suggest the user refine their query. "
     "Keep answers concise and well-structured."
 )
+
+
+def _serialize_thread(t: Thread) -> dict[str, Any]:
+    """Serialize a Thread ORM object into a JSON-safe dict for the frontend."""
+    participants = []
+    if t.participants:
+        for p in t.participants[:3]:
+            participants.append({
+                "name": p.get("name", ""),
+                "email": p.get("email", ""),
+            })
+    return {
+        "id": str(t.id),
+        "subject": t.subject or "(no subject)",
+        "snippet": (t.snippet or "")[:150],
+        "is_unread": t.is_unread,
+        "is_starred": t.is_starred,
+        "has_attachments": t.has_attachments,
+        "participants": participants,
+        "last_message_at": (
+            t.last_message_at.isoformat() if t.last_message_at else None
+        ),
+        "message_count": t.message_count,
+        "labels": [
+            {"id": str(lb.id), "name": lb.name, "color": lb.color}
+            for lb in (t.labels or [])
+        ],
+    }
 
 
 def _make_search_tool(db: AsyncSession, account_id: uuid.UUID):
@@ -114,6 +144,12 @@ def _make_search_tool(db: AsyncSession, account_id: uuid.UUID):
         if not threads:
             return "No threads found matching the criteria."
 
+        # Emit thread data to the frontend via custom event
+        dispatch_custom_event(
+            "threads",
+            {"threads": [_serialize_thread(t) for t in threads]},
+        )
+
         lines = []
         for t in threads:
             label_names = (
@@ -160,15 +196,27 @@ def build_chat_agent(db: AsyncSession, account_id: uuid.UUID):
 
 
 async def stream_chat(messages: list[dict], db: AsyncSession, account_id: uuid.UUID):
-    """Yield content chunks from the agent's final response."""
+    """Yield (event_type, data) tuples from the agent's response.
+
+    event_type is either "token" (str content) or "custom" (dict payload).
+    """
     agent = build_chat_agent(db, account_id)
-    async for msg, metadata in agent.astream(
-        {"messages": messages}, stream_mode="messages"
+    async for event in agent.astream_events(
+        {"messages": messages}, version="v2"
     ):
-        if (
-            hasattr(msg, "content")
-            and msg.content
-            and isinstance(msg.content, str)
-            and metadata.get("langgraph_node") == "agent"
-        ):
-            yield msg.content
+        kind = event["event"]
+
+        # LLM token streaming from the agent node
+        if kind == "on_chat_model_stream":
+            chunk = event["data"]["chunk"]
+            if (
+                hasattr(chunk, "content")
+                and chunk.content
+                and isinstance(chunk.content, str)
+                and event.get("metadata", {}).get("langgraph_node") == "agent"
+            ):
+                yield ("token", chunk.content)
+
+        # Custom events dispatched from tools
+        elif kind == "on_custom_event":
+            yield ("custom", {"name": event["name"], "data": event["data"]})

@@ -121,9 +121,12 @@ async def chat(
                     return
 
                 messages = [{"role": m.role, "content": m.content} for m in body.messages]
-                async for chunk in stream_chat(messages, db, account_id):
-                    full_text += chunk
-                    yield f"event: token\ndata: {json.dumps({'content': chunk})}\n\n"
+                async for event_type, data in stream_chat(messages, db, account_id):
+                    if event_type == "token":
+                        full_text += data
+                        yield f"event: token\ndata: {json.dumps({'content': data})}\n\n"
+                    elif event_type == "custom":
+                        yield f"event: custom\ndata: {json.dumps(data)}\n\n"
 
             yield f"event: done\ndata: {json.dumps({'full_text': full_text})}\n\n"
         except Exception as e:
