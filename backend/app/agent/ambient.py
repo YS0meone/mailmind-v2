@@ -193,11 +193,13 @@ async def run_ambient_agent(
     thread_subject = thread.subject or "(no subject)"
     thread_sender_name = email.from_name if email else ""
     thread_sender_email = email.from_email if email else ""
+    thread_snippet = thread.snippet or ""
     for p in proposals:
         p["payload"].update({
             "thread_subject": thread_subject,
             "thread_sender_name": thread_sender_name,
             "thread_sender_email": thread_sender_email,
+            "thread_snippet": thread_snippet,
         })
 
     logger.info(

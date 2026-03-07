@@ -29,6 +29,7 @@ export function ProposalListItem({
   const senderName = (payload.thread_sender_name as string) || (payload.thread_sender_email as string) || "Unknown";
   const subject = (payload.thread_subject as string) || "(no subject)";
   const reason = (payload.reason as string) || "";
+  const snippet = (payload.thread_snippet as string) || "";
   const draft = (payload.draft as string) || "";
   const acceptLabel = TYPE_ACCEPT_LABEL[proposal.type] ?? "Accept";
 
@@ -42,16 +43,24 @@ export function ProposalListItem({
         isSelected && "bg-accent",
       )}
     >
-      {/* Row 1: sender, subject, time */}
+      {/* Row 1: sender, subject, snippet, time */}
       <div className="flex items-center gap-2 text-[12.5px]">
         <span className="size-1.5 rounded-full bg-primary shrink-0" />
         <span className="w-36 shrink-0 truncate font-semibold text-foreground">
           {senderName}
         </span>
-        <span className="flex-1 truncate text-foreground/80 font-medium">
+        <span className="shrink-0 truncate max-w-[40%] font-medium text-foreground/80">
           {subject}
         </span>
-        <span className="text-[11px] text-muted-foreground/60 shrink-0">
+        {snippet && (
+          <>
+            <span className="shrink-0 text-muted-foreground/40">—</span>
+            <span className="flex-1 truncate text-muted-foreground/50">
+              {snippet}
+            </span>
+          </>
+        )}
+        <span className="text-[11px] text-muted-foreground/60 shrink-0 ml-auto">
           {relativeTime(proposal.created_at)}
         </span>
       </div>
