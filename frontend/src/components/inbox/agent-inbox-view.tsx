@@ -51,13 +51,14 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
     setContextThreads([]);
   }, []);
 
-  const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>) => {
+  const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>, type: string) => {
     if (payload.draft) {
       onOpenDraft(payload, proposalId);
     } else {
       await updateStatus(proposalId, "accepted");
       onStatusChange?.();
-      if (threadId) onSelectThread(threadId);
+      // Don't navigate to a thread we just deleted
+      if (threadId && type !== "suggest_delete") onSelectThread(threadId);
     }
   };
 
@@ -172,7 +173,7 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
                 proposal={p}
                 isSelected={!!p.thread_id && p.thread_id === selectedId}
                 onSelect={() => p.thread_id && onSelectThread(p.thread_id)}
-                onAccept={() => handleAccept(p.id, p.thread_id, p.payload)}
+                onAccept={() => handleAccept(p.id, p.thread_id, p.payload, p.type)}
                 onDismiss={() => handleDismiss(p.id)}
               />
             ))
