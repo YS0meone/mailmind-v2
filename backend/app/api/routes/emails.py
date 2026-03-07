@@ -112,10 +112,13 @@ async def send_email(
     if not account:
         raise HTTPException(status_code=400, detail="No active email account")
 
+    # Convert plain-text newlines to HTML line breaks for email rendering
+    html_body = body.body.replace("\n", "<br>") if body.body else ""
+
     message_payload = {
         "to": [p.model_dump() for p in body.to],
         "subject": body.subject,
-        "body": body.body,
+        "body": html_body,
     }
     if body.cc:
         message_payload["cc"] = [p.model_dump() for p in body.cc]

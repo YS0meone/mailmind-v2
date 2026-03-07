@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Minus, X, Send, Trash2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { RecipientInput } from "./recipient-input";
 import { AiComposeModal } from "./ai-compose-modal";
 import type { Participant, Draft } from "@/types/email";
@@ -124,6 +125,7 @@ export function ComposeWindow({ open, onOpenChange, onSent, draft, onDraftDelete
         body,
         draft_id: draftId ?? undefined,
       });
+      toast.success("Email sent");
       onOpenChange(false);
       setMinimized(false);
       resetForm();

@@ -160,7 +160,10 @@ export function useInbox() {
     setLoadingMore(true);
     listThreads(lastThread.id, activeFolder, searchQuery || undefined)
       .then((data) => {
-        setThreads((prev) => [...prev, ...data]);
+        setThreads((prev) => {
+          const existingIds = new Set(prev.map((t) => t.id));
+          return [...prev, ...data.filter((t: Thread) => !existingIds.has(t.id))];
+        });
         setHasMore(data.length >= PAGE_SIZE);
       })
       .catch(() => {})
