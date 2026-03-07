@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Inbox } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sparkles, Loader2, Inbox, FileEdit } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { ProposalListItem } from "./proposal-list-item";
 
 const PROPOSAL_TYPES = [
-  { value: "draft_reply", label: "Draft Replies" },
+  { value: "draft_reply", label: "Draft Replies", icon: FileEdit },
 ] as const;
 
 interface AgentInboxViewProps {
@@ -42,23 +42,33 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: Agen
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-2 border-b px-4 py-2.5">
-        <Sparkles className="size-4 text-primary" />
-        <span className="text-sm font-semibold">Agent Inbox</span>
+      {/* Header — h-13 matches ThreadList search bar height */}
+      <div className="shrink-0 flex h-13 items-center gap-2 border-b pl-5 pr-3">
+        <Sparkles className="size-3.5 text-muted-foreground" />
+        <span className="text-sm font-medium">Agent Inbox</span>
       </div>
 
-      {/* Type tabs */}
-      <div className="shrink-0 border-b px-4 py-2">
-        <Tabs value={activeType} onValueChange={(v) => setActiveType(v)}>
-          <TabsList className="h-7">
-            {PROPOSAL_TYPES.map((t) => (
-              <TabsTrigger key={t.value} value={t.value} className="text-xs h-6 px-3">
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      {/* Filter row — matches ThreadList filter bar styling */}
+      <div className="shrink-0 flex items-center gap-1 border-b px-3 py-1.5">
+        {PROPOSAL_TYPES.map((t) => {
+          const Icon = t.icon;
+          const isActive = activeType === t.value;
+          return (
+            <button
+              key={t.value}
+              onClick={() => setActiveType(t.value)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors",
+                isActive
+                  ? "bg-accent font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <Icon className="size-3" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* List */}
