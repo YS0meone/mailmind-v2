@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class Proposal(TypedDict):
-    type: Literal["notify", "draft_reply", "flag_urgent"]
+    type: Literal["draft_reply"]
     payload: dict
 
 
@@ -56,15 +56,6 @@ class AmbientState(TypedDict):
 # ---------------------------------------------------------------------------
 
 @tool
-def notify_tool(
-    reason: str,
-    urgency: Literal["high", "medium"] = "medium",
-) -> Proposal:
-    """Notify the user that this email deserves their attention."""
-    return {"type": "notify", "payload": {"reason": reason, "urgency": urgency}}
-
-
-@tool
 def draft_reply_tool(
     reason: str,
     draft_content: str,
@@ -81,13 +72,7 @@ def draft_reply_tool(
     }
 
 
-@tool
-def flag_urgent_tool(reason: str) -> Proposal:
-    """Flag this email as requiring the user's immediate attention."""
-    return {"type": "flag_urgent", "payload": {"reason": reason}}
-
-
-_OPTIONAL_TOOLS = [notify_tool, draft_reply_tool, flag_urgent_tool]
+_OPTIONAL_TOOLS = [draft_reply_tool]
 _TOOL_MAP = {t.name: t for t in _OPTIONAL_TOOLS}
 
 
@@ -97,15 +82,10 @@ _TOOL_MAP = {t.name: t for t in _OPTIONAL_TOOLS}
 
 _DECIDE_SYSTEM_PROMPT = (
     "You are an ambient email assistant reviewing an incoming email.\n"
-    "Decide whether any actions are warranted by calling the appropriate tools.\n"
-    "You may call zero, one, or several tools — but never call the same tool twice.\n\n"
-    "Tool guidance:\n"
-    "  notify_tool      — email is notable and the user should be made aware\n"
-    "  draft_reply_tool — a reply is clearly expected; write a complete ready-to-send"
-    " draft in draft_content\n"
-    "  flag_urgent_tool — requires the user's immediate attention\n\n"
-    "Default to doing nothing. Newsletters, automated alerts, and low-signal "
-    "emails should be silently ignored."
+    "If a reply is clearly expected from the user, call draft_reply_tool and write"
+    " a complete, ready-to-send reply in draft_content.\n\n"
+    "Default to doing nothing. Newsletters, automated notifications, and emails"
+    " that do not require a reply should be silently ignored."
 )
 
 _decide_llm = init_chat_model(
