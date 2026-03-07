@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.email import Email
+from app.models.proposal import AgentProposal
 from app.models.thread import Thread
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class AmbientState(TypedDict):
     body_preview: str | None
     from_email: str | None
     from_name: str | None
+    few_shot_examples: str
     # Output — Annotated[list, operator.add] for safe accumulation
     proposals: Annotated[list[Proposal], operator.add]
 
@@ -114,6 +116,62 @@ _decide_llm = init_chat_model(
 
 
 # ---------------------------------------------------------------------------
+# Few-shot examples from proposal history
+# ---------------------------------------------------------------------------
+
+_PROPOSAL_TYPES = ["draft_reply", "suggest_delete"]
+_EXAMPLES_PER_STATUS = 2  # 2 accepted + 2 dismissed per type
+
+_STATUS_LABELS = {
+    "accepted": "User ACCEPTED this proposal (correct prediction)",
+    "dismissed": "User DISMISSED this proposal (incorrect prediction — should not have proposed)",
+}
+
+
+async def _fetch_few_shot_examples(
+    account_id: uuid.UUID, db: AsyncSession,
+) -> str:
+    """Fetch recent accepted/dismissed proposals as contrastive few-shot examples."""
+    sections: list[str] = []
+
+    for ptype in _PROPOSAL_TYPES:
+        examples: list[str] = []
+
+        for status in ("accepted", "dismissed"):
+            rows = (await db.execute(
+                select(AgentProposal)
+                .where(
+                    AgentProposal.account_id == account_id,
+                    AgentProposal.type == ptype,
+                    AgentProposal.status == status,
+                )
+                .order_by(AgentProposal.created_at.desc())
+                .limit(_EXAMPLES_PER_STATUS)
+            )).scalars().all()
+
+            for r in rows:
+                payload = r.payload or {}
+                subject = payload.get("thread_subject", "")
+                sender = payload.get("thread_sender_email", "")
+                snippet = payload.get("thread_snippet", "")
+                reason = payload.get("reason", "")
+                label = _STATUS_LABELS[status]
+                examples.append(
+                    f'  - Subject: "{subject}" | From: {sender}'
+                    f' | Snippet: "{snippet}"'
+                    f'\n    Agent reason: "{reason}"'
+                    f"\n    → {label}"
+                )
+
+        if examples:
+            sections.append(
+                f"### {ptype} examples\n" + "\n".join(examples)
+            )
+
+    return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
 
@@ -131,8 +189,19 @@ async def decide_node(state: AmbientState) -> dict:
         parts.append(f"Body preview:\n{state['body_preview']}")
     human_msg = "\n".join(parts) if parts else "No email context available."
 
+    # Build system prompt with few-shot examples
+    system_prompt = _DECIDE_SYSTEM_PROMPT
+    few_shot = state.get("few_shot_examples", "")
+    if few_shot:
+        system_prompt += (
+            "\n\n## Past proposals and user feedback\n"
+            "Learn from these examples — repeat accepted patterns, "
+            "avoid dismissed ones.\n\n"
+            + few_shot
+        )
+
     response = await _decide_llm.ainvoke([
-        ("system", _DECIDE_SYSTEM_PROMPT),
+        ("system", system_prompt),
         ("human", human_msg),
     ])
 
@@ -192,6 +261,9 @@ async def run_ambient_agent(
         .limit(1)
     )).scalar_one_or_none()
 
+    # Fetch few-shot examples from proposal history
+    few_shot = await _fetch_few_shot_examples(account_id, db)
+
     graph = build_ambient_graph()
     final = await graph.ainvoke({
         "thread_id": str(thread_id),
@@ -201,6 +273,7 @@ async def run_ambient_agent(
         "body_preview": (email.snippet or "")[:500] if email else None,
         "from_email": email.from_email if email else None,
         "from_name": email.from_name if email else None,
+        "few_shot_examples": few_shot,
         "proposals": [],
     })
 
