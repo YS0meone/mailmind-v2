@@ -17,7 +17,6 @@ import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
 import { EmailDetailPanel } from "@/components/inbox/email-detail-panel";
 import { ComposeWindow } from "@/components/inbox/compose-window";
-import { AiChatPanel } from "@/components/inbox/ai-chat-panel";
 import { AgentInboxView } from "@/components/inbox/agent-inbox-view";
 import { LabelEditDialog } from "@/components/inbox/label-edit-dialog";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -63,7 +62,6 @@ export default function InboxPage() {
   const { pendingCount, refreshCount } = useProposals();
 
   const [composeOpen, setComposeOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
@@ -226,7 +224,6 @@ export default function InboxPage() {
           setEditingLabel(label);
           setLabelDialogOpen(true);
         }}
-        onAskAI={() => setChatOpen(true)}
         pendingProposalCount={pendingCount}
       />
       <SidebarInset className="overflow-hidden">
@@ -305,8 +302,6 @@ export default function InboxPage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarInset>
-
-      <AiChatPanel open={chatOpen} onOpenChange={setChatOpen} composeOpen={composeOpen} />
 
       <ComposeWindow
         open={composeOpen}

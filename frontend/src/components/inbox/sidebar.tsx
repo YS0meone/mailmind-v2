@@ -9,7 +9,6 @@ import {
   PenSquare,
   LogOut,
   User,
-  MessageSquare,
   Sparkles,
   ChevronDown,
   Plus,
@@ -56,7 +55,6 @@ interface SidebarProps {
   onFolderChange: (folder: string) => void;
   onAddLabel?: () => void;
   onEditLabel?: (label: Label) => void;
-  onAskAI?: () => void;
   pendingProposalCount?: number;
 }
 
@@ -77,7 +75,6 @@ export function AppSidebar({
   onFolderChange,
   onAddLabel,
   onEditLabel,
-  onAskAI,
   pendingProposalCount = 0,
 }: SidebarProps) {
   const { toggleSidebar } = useSidebar();
@@ -235,12 +232,6 @@ export function AppSidebar({
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Ask AI" onClick={onAskAI}>
-                      <MessageSquare />
-                      <span>Ask AI</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       tooltip="Agent Inbox"
