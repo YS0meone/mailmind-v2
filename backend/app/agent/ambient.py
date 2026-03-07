@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class Proposal(TypedDict):
-    type: Literal["draft_reply"]
+    type: Literal["draft_reply", "suggest_delete"]
     payload: dict
 
 
@@ -72,7 +72,20 @@ def draft_reply_tool(
     }
 
 
-_OPTIONAL_TOOLS = [draft_reply_tool]
+@tool
+def suggest_delete_tool(reason: str) -> Proposal:
+    """Propose deleting an email that is spam, promotional, a newsletter,
+    or otherwise irrelevant to the user.
+
+    Provide a short reason explaining why the email should be deleted.
+    """
+    return {
+        "type": "suggest_delete",
+        "payload": {"reason": reason},
+    }
+
+
+_OPTIONAL_TOOLS = [draft_reply_tool, suggest_delete_tool]
 _TOOL_MAP = {t.name: t for t in _OPTIONAL_TOOLS}
 
 
@@ -84,8 +97,12 @@ _DECIDE_SYSTEM_PROMPT = (
     "You are an ambient email assistant reviewing an incoming email.\n"
     "If a reply is clearly expected from the user, call draft_reply_tool and write"
     " a complete, ready-to-send reply in draft_content.\n\n"
-    "Default to doing nothing. Newsletters, automated notifications, and emails"
-    " that do not require a reply should be silently ignored."
+    "If the email is spam, promotional, a newsletter, marketing, or otherwise"
+    " irrelevant junk the user likely wants deleted, call suggest_delete_tool"
+    " with a short reason.\n\n"
+    "Default to doing nothing for emails that are informational but not junk"
+    " (e.g. order confirmations, security alerts, personal messages that don't"
+    " need a reply)."
 )
 
 _decide_llm = init_chat_model(

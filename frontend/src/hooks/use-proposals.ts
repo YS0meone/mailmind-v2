@@ -84,5 +84,6 @@ export function useProposals(options: UseProposalsOptions = {}) {
     pendingCount,
     updateStatus: handleUpdateStatus,
     refresh: fetchList,
+    refreshCount: fetchCount,
   };
 }

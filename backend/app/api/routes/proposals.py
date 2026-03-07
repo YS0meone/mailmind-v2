@@ -1,5 +1,6 @@
 """Proposal routes — list, count, and update ambient agent proposals."""
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,10 +9,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.routes.threads import trash_thread
 from app.db.database import get_db
 from app.models.email_account import EmailAccount
 from app.models.proposal import AgentProposal
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 
@@ -144,6 +148,16 @@ async def update_proposal(
 
     proposal.status = body.status
     await db.commit()
+
+    # Execute side-effects for accepted proposals
+    if body.status == "accepted" and proposal.type == "suggest_delete" and proposal.thread_id:
+        try:
+            await trash_thread(proposal.thread_id, db)
+        except Exception as e:
+            logger.warning(
+                "Failed to trash thread %s for proposal %s: %s",
+                proposal.thread_id, proposal_id, e,
+            )
 
     return {
         "id": str(proposal.id),

@@ -123,18 +123,15 @@ async def get_thread(
     return thread
 
 
-@router.delete("/{thread_id}")
-async def delete_thread(
-    thread_id: uuid.UUID,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Move a thread to Trash. Updates each message's folder via Nylas."""
-    account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
+async def trash_thread(thread_id: uuid.UUID, db: AsyncSession) -> None:
+    """Move a thread to Trash via Nylas and update local DB.
+
+    Raises HTTPException if thread or account is not found.
+    """
     result = await db.execute(
         select(Thread)
         .options(selectinload(Thread.emails))
-        .where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
+        .where(Thread.id == thread_id)
     )
     thread = result.scalar_one_or_none()
     if not thread:
@@ -174,6 +171,24 @@ async def delete_thread(
     # Update local DB
     thread.folder_ids = ["TRASH"]
     await db.commit()
+
+
+@router.delete("/{thread_id}")
+async def delete_thread(
+    thread_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a thread to Trash. Updates each message's folder via Nylas."""
+    # Verify ownership
+    account_ids = select(EmailAccount.id).where(EmailAccount.user_id == user.id)
+    result = await db.execute(
+        select(Thread).where(Thread.id == thread_id, Thread.account_id.in_(account_ids))
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    await trash_thread(thread_id, db)
     return {"status": "ok"}
 
 

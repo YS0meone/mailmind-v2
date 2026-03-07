@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, FileEdit, CornerDownLeft } from "lucide-react";
+import { Sparkles, FileEdit, CornerDownLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface ProposalListItemProps {
 
 const TYPE_ACCEPT_LABEL: Record<string, string> = {
   draft_reply: "Open Draft",
+  suggest_delete: "Delete",
 };
 
 export function ProposalListItem({
@@ -32,6 +33,8 @@ export function ProposalListItem({
   const snippet = (payload.thread_snippet as string) || "";
   const draft = (payload.draft as string) || "";
   const acceptLabel = TYPE_ACCEPT_LABEL[proposal.type] ?? "Accept";
+  const isDestructive = proposal.type === "suggest_delete";
+  const AcceptIcon = isDestructive ? Trash2 : FileEdit;
 
   return (
     <div
@@ -65,12 +68,36 @@ export function ProposalListItem({
         </span>
       </div>
 
-      {/* Row 2: AI reason */}
+      {/* Row 2: AI reason + action buttons (inline when no draft) */}
       <div className="mt-1 ml-[22px] flex items-center gap-2">
         <Sparkles className="size-3 text-primary shrink-0 opacity-70" />
         <span className="flex-1 truncate text-xs text-muted-foreground">
           {reason}
         </span>
+        {!draft && (
+          <div
+            className="flex items-center gap-1.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              size="sm"
+              variant={isDestructive ? "destructive" : "outline"}
+              className="h-6 px-2.5 text-xs gap-1"
+              onClick={onAccept}
+            >
+              <AcceptIcon className="size-3" />
+              {acceptLabel}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onDismiss}
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Row 3: Draft preview + action buttons */}
@@ -86,11 +113,11 @@ export function ProposalListItem({
           >
             <Button
               size="sm"
-              variant="outline"
+              variant={isDestructive ? "destructive" : "outline"}
               className="h-6 px-2.5 text-xs gap-1"
               onClick={onAccept}
             >
-              <FileEdit className="size-3" />
+              <AcceptIcon className="size-3" />
               {acceptLabel}
             </Button>
             <Button
@@ -102,30 +129,6 @@ export function ProposalListItem({
               Dismiss
             </Button>
           </div>
-        </div>
-      )}
-      {!draft && (
-        <div
-          className="mt-1 ml-[22px] flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2.5 text-xs gap-1"
-            onClick={onAccept}
-          >
-            <FileEdit className="size-3" />
-            {acceptLabel}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={onDismiss}
-          >
-            Dismiss
-          </Button>
         </div>
       )}
     </div>

@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Inbox, FileEdit } from "lucide-react";
+import { Sparkles, Loader2, Inbox, FileEdit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { ProposalListItem } from "./proposal-list-item";
 
 const PROPOSAL_TYPES = [
   { value: "draft_reply", label: "Draft Replies", icon: FileEdit },
+  { value: "suggest_delete", label: "Suggested Deletes", icon: Trash2 },
 ] as const;
 
 interface AgentInboxViewProps {
   selectedId: string | null;
   onSelectThread: (threadId: string) => void;
   onOpenDraft: (payload: Record<string, unknown>, proposalId: string) => void;
+  onStatusChange?: () => void;
 }
 
-export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: AgentInboxViewProps) {
+export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStatusChange }: AgentInboxViewProps) {
   const [activeType, setActiveType] = useState<string>(PROPOSAL_TYPES[0].value);
 
   const { proposals, loading, updateStatus } = useProposals({
@@ -32,12 +34,14 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: Agen
       onOpenDraft(payload, proposalId);
     } else {
       await updateStatus(proposalId, "accepted");
+      onStatusChange?.();
       if (threadId) onSelectThread(threadId);
     }
   };
 
   const handleDismiss = async (proposalId: string) => {
     await updateStatus(proposalId, "dismissed");
+    onStatusChange?.();
   };
 
   return (

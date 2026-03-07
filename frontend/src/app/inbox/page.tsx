@@ -60,7 +60,7 @@ export default function InboxPage() {
   } = useInbox();
 
   const { labels, createLabel, updateLabel, deleteLabel } = useLabels();
-  const { pendingCount } = useProposals();
+  const { pendingCount, refreshCount } = useProposals();
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -235,6 +235,7 @@ export default function InboxPage() {
             {activeFolder === "agent_inbox" ? (
               <AgentInboxView
                 selectedId={selectedId}
+                onStatusChange={refreshCount}
                 onSelectThread={(threadId) => {
                   selectThreadById(threadId);
                   const panel = detailPanelRef.current;
