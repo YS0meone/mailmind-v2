@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Inbox, FileEdit, Trash2, MessageSquare } from "lucide-react";
+import { Sparkles, Loader2, Inbox, FileEdit, Trash2, MessageSquare, ChevronRight, Mail, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { ProposalListItem } from "./proposal-list-item";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { AgentChatSection } from "./agent-chat-section";
 
 const TABS = [
@@ -80,7 +81,42 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
 
       {/* Content */}
       {activeTab === "ask_ai" ? (
-        <AgentChatSection />
+        <div className="flex-1 overflow-y-auto">
+          {/* Chat section */}
+          <div className="p-3 pb-0">
+            <div className="h-[40dvh] rounded-lg border bg-background">
+              <AgentChatSection />
+            </div>
+          </div>
+
+          {/* Threads in Context */}
+          <Collapsible defaultOpen>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
+              <ChevronRight className="size-3 transition-transform group-data-[state=open]:rotate-90" />
+              <Mail className="size-3" />
+              Threads in Context
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <p className="text-xs">No threads in context</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Agent Proposals */}
+          <Collapsible defaultOpen>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group border-t">
+              <ChevronRight className="size-3 transition-transform group-data-[state=open]:rotate-90" />
+              <ClipboardList className="size-3" />
+              Agent Proposals
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <p className="text-xs">No proposals yet</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
           {loading && proposals.length === 0 ? (
