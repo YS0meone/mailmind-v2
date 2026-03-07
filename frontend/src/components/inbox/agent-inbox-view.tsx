@@ -26,6 +26,7 @@ interface AgentInboxViewProps {
 export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStatusChange }: AgentInboxViewProps) {
   const [activeTab, setActiveTab] = useState<string>("ask_ai");
   const [contextThreads, setContextThreads] = useState<Thread[]>([]);
+  const [visitedIds, setVisitedIds] = useState<Set<string>>(new Set());
 
   const isProposalTab = activeTab !== "ask_ai";
 
@@ -50,6 +51,15 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
   const handleNewChat = useCallback(() => {
     setContextThreads([]);
   }, []);
+
+  const handleSelect = useCallback((proposalId: string, threadId: string) => {
+    setVisitedIds((prev) => {
+      const next = new Set(prev);
+      next.add(proposalId);
+      return next;
+    });
+    onSelectThread(threadId);
+  }, [onSelectThread]);
 
   const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>, type: string) => {
     if (payload.draft) {
@@ -172,7 +182,8 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
                 key={p.id}
                 proposal={p}
                 isSelected={!!p.thread_id && p.thread_id === selectedId}
-                onSelect={() => p.thread_id && onSelectThread(p.thread_id)}
+                isVisited={visitedIds.has(p.id)}
+                onSelect={() => p.thread_id && handleSelect(p.id, p.thread_id)}
                 onAccept={() => handleAccept(p.id, p.thread_id, p.payload, p.type)}
                 onDismiss={() => handleDismiss(p.id)}
               />

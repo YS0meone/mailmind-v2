@@ -21,6 +21,7 @@ import type { Proposal } from "@/lib/api-client";
 interface ProposalListItemProps {
   proposal: Proposal;
   isSelected: boolean;
+  isVisited?: boolean;
   onSelect: () => void;
   onAccept: () => void | Promise<void>;
   onDismiss: () => void | Promise<void>;
@@ -34,6 +35,7 @@ const TYPE_ACCEPT_LABEL: Record<string, string> = {
 export function ProposalListItem({
   proposal,
   isSelected,
+  isVisited,
   onSelect,
   onAccept,
   onDismiss,
@@ -137,7 +139,9 @@ export function ProposalListItem({
     >
       {/* Row 1: sender, subject, snippet, time */}
       <div className="flex items-center gap-2 text-[12.5px]">
-        <span className="size-1.5 rounded-full bg-primary shrink-0" />
+        {!isVisited && (
+          <span className="size-1.5 rounded-full bg-primary shrink-0" />
+        )}
         <span className="w-36 shrink-0 truncate font-semibold text-foreground">
           {senderName}
         </span>
