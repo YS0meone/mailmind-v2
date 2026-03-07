@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Sparkles, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,8 @@ import {
 import { getLabelColor, COLOR_NAMES } from "@/lib/label-colors";
 import { cn } from "@/lib/utils";
 import type { Label } from "@/types/email";
+
+type ClassifyMode = "ai" | "rules";
 
 interface LabelEditDialogProps {
   open: boolean;
@@ -52,6 +54,7 @@ export function LabelEditDialog({
   const [rulesText, setRulesText] = useState("");
   const [rulesError, setRulesError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [classifyMode, setClassifyMode] = useState<ClassifyMode>("ai");
 
   useEffect(() => {
     if (open) {
@@ -60,11 +63,14 @@ export function LabelEditDialog({
         setColor(label.color);
         setDescription(label.description || "");
         setRulesText(label.rules ? JSON.stringify(label.rules, null, 2) : "");
+        // Infer mode from existing data
+        setClassifyMode(label.rules ? "rules" : "ai");
       } else {
         setName("");
         setColor("blue");
         setDescription("");
         setRulesText("");
+        setClassifyMode("ai");
       }
       setRulesError("");
     }
@@ -85,8 +91,11 @@ export function LabelEditDialog({
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    const rules = parseRules();
-    if (rules === undefined) return;
+
+    // Only validate/include fields for the active mode
+    const rules = classifyMode === "rules" ? parseRules() : null;
+    if (rules === undefined) return; // JSON parse error
+    const desc = classifyMode === "ai" ? description.trim() || undefined : undefined;
 
     setSaving(true);
     try {
@@ -94,14 +103,14 @@ export function LabelEditDialog({
         await onSave(label.id, {
           name: name.trim(),
           color,
-          description: description.trim() || undefined,
+          description: desc,
           rules,
         });
       } else {
         await onCreate({
           name: name.trim(),
           color,
-          description: description.trim() || undefined,
+          description: desc,
           rules,
         });
       }
@@ -165,43 +174,82 @@ export function LabelEditDialog({
             </div>
           </div>
 
-          {/* Description */}
+          {/* Classification mode toggle */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Description
-              <span className="ml-1 font-normal text-muted-foreground/60">
-                (used as context for AI triage)
-              </span>
+              Classification
             </label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Work-related emails, meetings, projects"
-              className="h-9"
-            />
+            <div className="flex items-center gap-1 rounded-lg border p-0.5">
+              <button
+                type="button"
+                onClick={() => setClassifyMode("ai")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors",
+                  classifyMode === "ai"
+                    ? "bg-accent font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Sparkles className="size-3" />
+                AI Triage
+              </button>
+              <button
+                type="button"
+                onClick={() => setClassifyMode("rules")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors",
+                  classifyMode === "rules"
+                    ? "bg-accent font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <ListFilter className="size-3" />
+                Rule-based
+              </button>
+            </div>
           </div>
 
-          {/* Rules */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Rules
-              <span className="ml-1 font-normal text-muted-foreground/60">
-                (JSON, for auto-classification)
-              </span>
-            </label>
-            <Textarea
-              value={rulesText}
-              onChange={(e) => {
-                setRulesText(e.target.value);
-                setRulesError("");
-              }}
-              placeholder={`{\n  "conditions": [\n    { "field": "from_email", "op": "contains", "value": "@company.com" }\n  ],\n  "match": "any"\n}`}
-              className="min-h-24 font-mono text-xs"
-            />
-            {rulesError && (
-              <span className="text-xs text-destructive">{rulesError}</span>
-            )}
-          </div>
+          {/* AI mode: Description */}
+          {classifyMode === "ai" && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Description
+                <span className="ml-1 font-normal text-muted-foreground/60">
+                  (used as context for AI triage)
+                </span>
+              </label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Work-related emails, meetings, projects"
+                className="h-9"
+              />
+            </div>
+          )}
+
+          {/* Rules mode: JSON editor */}
+          {classifyMode === "rules" && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Rules
+                <span className="ml-1 font-normal text-muted-foreground/60">
+                  (JSON, for auto-classification)
+                </span>
+              </label>
+              <Textarea
+                value={rulesText}
+                onChange={(e) => {
+                  setRulesText(e.target.value);
+                  setRulesError("");
+                }}
+                placeholder={`{\n  "conditions": [\n    { "field": "from_email", "op": "contains", "value": "@company.com" }\n  ],\n  "match": "any"\n}`}
+                className="min-h-24 font-mono text-xs"
+              />
+              {rulesError && (
+                <span className="text-xs text-destructive">{rulesError}</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
