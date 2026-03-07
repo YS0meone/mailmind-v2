@@ -13,7 +13,7 @@ const PROPOSAL_TYPES = [
 interface AgentInboxViewProps {
   selectedId: string | null;
   onSelectThread: (threadId: string) => void;
-  onOpenDraft: (payload: Record<string, unknown>) => void;
+  onOpenDraft: (payload: Record<string, unknown>, proposalId: string) => void;
 }
 
 export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: AgentInboxViewProps) {
@@ -27,11 +27,12 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft }: Agen
   });
 
   const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>) => {
-    await updateStatus(proposalId, "accepted");
     if (payload.draft) {
-      onOpenDraft(payload);
-    } else if (threadId) {
-      onSelectThread(threadId);
+      // Don't mark accepted yet — only resolved when the draft is actually sent
+      onOpenDraft(payload, proposalId);
+    } else {
+      await updateStatus(proposalId, "accepted");
+      if (threadId) onSelectThread(threadId);
     }
   };
 

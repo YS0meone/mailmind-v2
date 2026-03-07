@@ -11,6 +11,7 @@ import {
   toggleThreadStar,
   toggleThreadRead,
   deleteThread,
+  updateProposal,
 } from "@/lib/api-client";
 import { AppSidebar } from "@/components/inbox/sidebar";
 import { ThreadList } from "@/components/inbox/thread-list";
@@ -67,6 +68,7 @@ export default function InboxPage() {
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const [composePrefill, setComposePrefill] = useState<{ to?: Participant[]; subject?: string; body?: string } | null>(null);
+  const [pendingProposalId, setPendingProposalId] = useState<string | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
   const handleLabelsChange = useCallback(
@@ -212,6 +214,7 @@ export default function InboxPage() {
         onCompose={() => {
           setEditingDraft(null);
           setComposePrefill(null);
+          setPendingProposalId(null);
           setComposeOpen(true);
         }}
         onFolderChange={setActiveFolder}
@@ -237,7 +240,7 @@ export default function InboxPage() {
                   const panel = detailPanelRef.current;
                   if (panel?.isCollapsed()) panel.resize("60%");
                 }}
-                onOpenDraft={(payload) => {
+                onOpenDraft={(payload, proposalId) => {
                   const senderEmail = payload.thread_sender_email as string;
                   const senderName = payload.thread_sender_name as string;
                   const subject = payload.thread_subject as string;
@@ -248,6 +251,7 @@ export default function InboxPage() {
                     subject: subject ? (subject.startsWith("Re:") ? subject : `Re: ${subject}`) : "",
                     body: draft,
                   });
+                  setPendingProposalId(proposalId);
                   setComposeOpen(true);
                 }}
               />
@@ -305,10 +309,17 @@ export default function InboxPage() {
 
       <ComposeWindow
         open={composeOpen}
-        onOpenChange={setComposeOpen}
+        onOpenChange={(open) => {
+          setComposeOpen(open);
+          if (!open) setPendingProposalId(null);
+        }}
         onSent={() => {
           handleSent();
           refreshDrafts();
+          if (pendingProposalId) {
+            updateProposal(pendingProposalId, "accepted").catch(() => {});
+            setPendingProposalId(null);
+          }
         }}
         draft={editingDraft}
         onDraftDeleted={handleDraftDeleted}
