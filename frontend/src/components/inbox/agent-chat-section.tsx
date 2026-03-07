@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { streamChat } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, MessageSquare, RotateCcw } from "lucide-react";
+import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -147,14 +148,18 @@ export function AgentChatSection({ onCustomEvent, onNewChat }: AgentChatSectionP
           >
             <div
               className={cn(
-                "max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap",
+                "max-w-[85%] rounded-xl px-3 py-2 text-sm",
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground",
+                  ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                  : "bg-muted text-foreground prose prose-sm prose-neutral dark:prose-invert max-w-none",
               )}
             >
-              {msg.content || (
+              {!msg.content ? (
                 <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : msg.role === "assistant" ? (
+                <Markdown>{msg.content}</Markdown>
+              ) : (
+                msg.content
               )}
             </div>
           </div>
