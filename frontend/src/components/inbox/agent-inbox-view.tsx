@@ -18,15 +18,15 @@ const TABS = [
 
 interface AgentInboxViewProps {
   selectedId: string | null;
+  readThreadIds: Set<string>;
   onSelectThread: (threadId: string) => void;
   onOpenDraft: (payload: Record<string, unknown>, proposalId: string) => void;
   onStatusChange?: () => void;
 }
 
-export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStatusChange }: AgentInboxViewProps) {
+export function AgentInboxView({ selectedId, readThreadIds, onSelectThread, onOpenDraft, onStatusChange }: AgentInboxViewProps) {
   const [activeTab, setActiveTab] = useState<string>("ask_ai");
   const [contextThreads, setContextThreads] = useState<Thread[]>([]);
-  const [visitedIds, setVisitedIds] = useState<Set<string>>(new Set());
 
   const isProposalTab = activeTab !== "ask_ai";
 
@@ -51,15 +51,6 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
   const handleNewChat = useCallback(() => {
     setContextThreads([]);
   }, []);
-
-  const handleSelect = useCallback((proposalId: string, threadId: string) => {
-    setVisitedIds((prev) => {
-      const next = new Set(prev);
-      next.add(proposalId);
-      return next;
-    });
-    onSelectThread(threadId);
-  }, [onSelectThread]);
 
   const handleAccept = async (proposalId: string, threadId: string | null, payload: Record<string, unknown>, type: string) => {
     if (payload.draft) {
@@ -177,17 +168,20 @@ export function AgentInboxView({ selectedId, onSelectThread, onOpenDraft, onStat
               <p className="text-sm">No pending proposals</p>
             </div>
           ) : (
-            proposals.map((p) => (
-              <ProposalListItem
-                key={p.id}
-                proposal={p}
-                isSelected={!!p.thread_id && p.thread_id === selectedId}
-                isVisited={visitedIds.has(p.id)}
-                onSelect={() => p.thread_id && handleSelect(p.id, p.thread_id)}
-                onAccept={() => handleAccept(p.id, p.thread_id, p.payload, p.type)}
-                onDismiss={() => handleDismiss(p.id)}
-              />
-            ))
+            proposals.map((p) => {
+              const isUnread = p.thread_id ? !readThreadIds.has(p.thread_id) : true;
+              return (
+                <ProposalListItem
+                  key={p.id}
+                  proposal={p}
+                  isSelected={!!p.thread_id && p.thread_id === selectedId}
+                  isUnread={isUnread}
+                  onSelect={() => p.thread_id && onSelectThread(p.thread_id)}
+                  onAccept={() => handleAccept(p.id, p.thread_id, p.payload, p.type)}
+                  onDismiss={() => handleDismiss(p.id)}
+                />
+              );
+            })
           )}
         </div>
       )}

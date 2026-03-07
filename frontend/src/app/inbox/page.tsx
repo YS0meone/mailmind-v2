@@ -67,6 +67,7 @@ export default function InboxPage() {
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const [composePrefill, setComposePrefill] = useState<{ to?: Participant[]; subject?: string; body?: string } | null>(null);
   const [pendingProposalId, setPendingProposalId] = useState<string | null>(null);
+  const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set());
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
 
   const handleLabelsChange = useCallback(
@@ -232,9 +233,15 @@ export default function InboxPage() {
             {activeFolder === "agent_inbox" ? (
               <AgentInboxView
                 selectedId={selectedId}
+                readThreadIds={readThreadIds}
                 onStatusChange={refreshCount}
                 onSelectThread={(threadId) => {
                   selectThreadById(threadId);
+                  setReadThreadIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(threadId);
+                    return next;
+                  });
                   const panel = detailPanelRef.current;
                   if (panel?.isCollapsed()) panel.resize("60%");
                 }}

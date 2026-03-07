@@ -21,7 +21,7 @@ import type { Proposal } from "@/lib/api-client";
 interface ProposalListItemProps {
   proposal: Proposal;
   isSelected: boolean;
-  isVisited?: boolean;
+  isUnread?: boolean;
   onSelect: () => void;
   onAccept: () => void | Promise<void>;
   onDismiss: () => void | Promise<void>;
@@ -35,7 +35,7 @@ const TYPE_ACCEPT_LABEL: Record<string, string> = {
 export function ProposalListItem({
   proposal,
   isSelected,
-  isVisited,
+  isUnread,
   onSelect,
   onAccept,
   onDismiss,
@@ -139,13 +139,22 @@ export function ProposalListItem({
     >
       {/* Row 1: sender, subject, snippet, time */}
       <div className="flex items-center gap-2 text-[12.5px]">
-        {!isVisited && (
-          <span className="size-1.5 rounded-full bg-primary shrink-0" />
-        )}
-        <span className="w-36 shrink-0 truncate font-semibold text-foreground">
+        <span
+          className={cn(
+            "block size-1.5 rounded-full shrink-0",
+            isUnread ? "bg-primary" : "bg-transparent"
+          )}
+        />
+        <span className={cn(
+          "w-36 shrink-0 truncate",
+          isUnread ? "font-semibold text-foreground" : "text-muted-foreground"
+        )}>
           {senderName}
         </span>
-        <span className="shrink-0 truncate max-w-[40%] font-medium text-foreground/80">
+        <span className={cn(
+          "shrink-0 truncate max-w-[40%]",
+          isUnread ? "font-medium text-foreground" : "text-foreground/80"
+        )}>
           {subject}
         </span>
         {snippet && (
